@@ -96,8 +96,13 @@ async function sendReminder(event, client) {
     if (event.threadId) {
       const thread = await client.channels.fetch(event.threadId);
       if (thread && thread.isThread()) {
-        // Send a message in the thread mentioning everyone
-        await thread.send(`@here Event "${event.title}" starts in ${REMINDER_TIME_MINUTES} minutes! 🎮`);
+        // Build mentions for all accepted users
+        const mentions = event.signups.map(signup => `<@${signup.userId}>`).join(' ');
+        const message = mentions
+          ? `${mentions} Event "${event.title}" starts in ${REMINDER_TIME_MINUTES} minutes! 🎮`
+          : `Event "${event.title}" starts in ${REMINDER_TIME_MINUTES} minutes! 🎮`;
+
+        await thread.send(message);
       }
     }
 
