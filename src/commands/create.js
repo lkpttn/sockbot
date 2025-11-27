@@ -74,7 +74,7 @@ export const createCommand = {
             .setRequired(true))
         .addStringOption(option =>
           option.setName('start')
-            .setDescription('Start time (e.g., "reset", "reset+2", "4pm EST", "tomorrow 8pm EST")')
+            .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
             .setRequired(true))
         .addStringOption(option =>
           option.setName('description')
@@ -98,7 +98,7 @@ export const createCommand = {
             .setRequired(true))
         .addStringOption(option =>
           option.setName('start')
-            .setDescription('Start time (e.g., "reset", "reset+2", "4pm EST", "tomorrow 8pm EST")')
+            .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
             .setRequired(true))
         .addStringOption(option =>
           option.setName('description')
@@ -122,7 +122,7 @@ export const createCommand = {
             .setRequired(true))
         .addStringOption(option =>
           option.setName('start')
-            .setDescription('Start time (e.g., "reset", "reset+2", "4pm EST", "tomorrow 8pm EST")')
+            .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
             .setRequired(true))
         .addStringOption(option =>
           option.setName('description')
@@ -146,7 +146,7 @@ export const createCommand = {
             .setRequired(true))
         .addStringOption(option =>
           option.setName('start')
-            .setDescription('Start time (e.g., "reset", "reset+2", "4pm EST", "tomorrow 8pm EST")')
+            .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
             .setRequired(true))
         .addStringOption(option =>
           option.setName('description')
@@ -170,7 +170,7 @@ export const createCommand = {
             .setRequired(true))
         .addStringOption(option =>
           option.setName('start')
-            .setDescription('Start time (e.g., "reset", "reset+2", "4pm EST", "tomorrow 8pm EST")')
+            .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
             .setRequired(true))
         .addStringOption(option =>
           option.setName('description')
@@ -210,7 +210,7 @@ export const createCommand = {
       parsedDate = chrono.parseDate(startString);
       if (!parsedDate) {
         return interaction.reply({
-          content: `Could not parse start time: "${startString}".\nTry formats like:\n- "reset", "reset+2"\n- "4pm EST", "8:30pm PST"\n- "tomorrow 4pm EST"`,
+          content: `Could not parse start time: "${startString}".\nTry formats like:\n- "reset", "reset+2"\n- "4pm EST", "8:30pm PST"\n- "tomorrow 4pm EST", "Wednesday 8pm EST"`,
           flags: MessageFlags.Ephemeral
         });
       }
