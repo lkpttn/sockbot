@@ -2,6 +2,9 @@
 Sockbot is a simple, single-server discord bot that we use to manage event creation. It's extremely narrowly
 scoped to our preferences and needs.
 
+<img width="584" height="533" alt="CleanShot 2025-11-27 at 08 00 25" src="https://github.com/user-attachments/assets/6e716eb1-5ca6-4195-8b18-c0822a6c0fe0" />
+
+
 ### Commands
 `/create` invokes the bot with the following templates:
 - Fractals
