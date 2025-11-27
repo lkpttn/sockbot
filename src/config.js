@@ -4,35 +4,35 @@ export const TEMPLATES = {
     capacity: 5,
     duration: 120,
     roles: ['DPS', 'Boon DPS', 'Healer', 'Glut'],
-    mentionRole: 1365144192149487768 // Fractals role ID
+    mentionRole: '1365144192149487768' // Fractals role ID
   },
   raid: {
     name: 'Raid',
     capacity: 10,
     duration: 120,
     roles: ['DPS', 'Boon DPS', 'Healer', 'Tank', 'Kite'],
-    mentionRole: 1364345501813833728 // Raids role ID
+    mentionRole: '1364345501813833728' // Raids role ID
   },
   party: {
     name: 'Party',
     capacity: 5,
     duration: 90,
     roles: ['DPS', 'Boon DPS', 'Healer'],
-    mentionRole: 1391807927358193674 // Content role ID
+    mentionRole: '1391807927358193674' // Content role ID
   },
   squad: {
     name: 'Squad',
     capacity: 10,
     duration: 90,
     roles: ['DPS', 'Boon DPS', 'Healer'],
-    mentionRole: 1391807927358193674 // Content role ID
+    mentionRole: '1391807927358193674' // Content role ID
   },
   freeform: {
     name: 'Freeform',
     capacity: 20,
     duration: 60,
     roles: ['DPS', 'Boon DPS', 'Healer'],
-    mentionRole: 1391807927358193674 // Content role ID
+    mentionRole: '1391807927358193674' // Content role ID
   }
 };
 

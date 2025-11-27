@@ -1,3 +1,4 @@
+import { MessageFlags } from 'discord.js';
 import { getEventByMessageId } from '../managers/eventManager.js';
 import { toggleRole } from '../managers/signupManager.js';
 import { buildEventEmbed } from '../managers/embedManager.js';
@@ -12,7 +13,7 @@ export async function handleRoleButton(interaction) {
   if (!event) {
     return interaction.reply({
       content: 'Event not found. It may have been deleted.',
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 

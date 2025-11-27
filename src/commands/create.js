@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { TEMPLATES, DEFAULT_TIMEZONE } from '../config.js';
 import { createEvent } from '../managers/eventManager.js';
 import { buildEventEmbed, buildEventButtons } from '../managers/embedManager.js';
@@ -208,7 +208,7 @@ export const createCommand = {
       if (!parsedDate) {
         return interaction.reply({
           content: `Could not parse start time: "${startString}". Try formats like "reset", "reset+2", "tomorrow at 8pm EST", "11am PST", or "2024-01-15 20:00"`,
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
     }
@@ -217,7 +217,7 @@ export const createCommand = {
     if (parsedDate < new Date()) {
       return interaction.reply({
         content: 'Start time must be in the future.',
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 
