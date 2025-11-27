@@ -74,7 +74,7 @@ export const createCommand = {
             .setRequired(true))
         .addStringOption(option =>
           option.setName('start')
-            .setDescription('Start time (e.g., "reset", "reset+2", "tomorrow 8pm EST")')
+            .setDescription('Start time (e.g., "reset", "reset+2", "4pm EST", "tomorrow 8pm EST")')
             .setRequired(true))
         .addStringOption(option =>
           option.setName('description')
@@ -98,7 +98,7 @@ export const createCommand = {
             .setRequired(true))
         .addStringOption(option =>
           option.setName('start')
-            .setDescription('Start time (e.g., "reset", "reset+2", "tomorrow 8pm EST")')
+            .setDescription('Start time (e.g., "reset", "reset+2", "4pm EST", "tomorrow 8pm EST")')
             .setRequired(true))
         .addStringOption(option =>
           option.setName('description')
@@ -122,7 +122,7 @@ export const createCommand = {
             .setRequired(true))
         .addStringOption(option =>
           option.setName('start')
-            .setDescription('Start time (e.g., "reset", "reset+2", "tomorrow 8pm EST")')
+            .setDescription('Start time (e.g., "reset", "reset+2", "4pm EST", "tomorrow 8pm EST")')
             .setRequired(true))
         .addStringOption(option =>
           option.setName('description')
@@ -146,7 +146,7 @@ export const createCommand = {
             .setRequired(true))
         .addStringOption(option =>
           option.setName('start')
-            .setDescription('Start time (e.g., "reset", "reset+2", "tomorrow 8pm EST")')
+            .setDescription('Start time (e.g., "reset", "reset+2", "4pm EST", "tomorrow 8pm EST")')
             .setRequired(true))
         .addStringOption(option =>
           option.setName('description')
@@ -170,7 +170,7 @@ export const createCommand = {
             .setRequired(true))
         .addStringOption(option =>
           option.setName('start')
-            .setDescription('Start time (e.g., "reset", "reset+2", "tomorrow 8pm EST")')
+            .setDescription('Start time (e.g., "reset", "reset+2", "4pm EST", "tomorrow 8pm EST")')
             .setRequired(true))
         .addStringOption(option =>
           option.setName('description')
@@ -193,28 +193,32 @@ export const createCommand = {
     const duration = interaction.options.getInteger('duration');
     const customRolesString = interaction.options.getString('custom-roles');
 
-    // Parse start time - handle GW2 reset time (7pm EDT)
-    let parsedDate = parseResetTime(startString);
+    let parsedDate;
+
+    // Try GW2 reset time parsing first
+    parsedDate = parseResetTime(startString);
 
     if (!parsedDate) {
-      // If not a reset time, try regular parsing with chrono using guild timezone
-      // Users can override by specifying timezone (e.g., "8pm PST", "11am UTC")
-      const reference = {
-        instant: new Date(),
-        timezone: DEFAULT_TIMEZONE
-      };
+      // Require explicit timezone in the input for clarity
+      if (!/\b(UTC|GMT|EST|EDT|CST|CDT|MST|MDT|PST|PDT)\b/i.test(startString)) {
+        return interaction.reply({
+          content: `Please include a timezone in your start time (e.g., "4pm EST", "tomorrow 8pm PST").`,
+          flags: MessageFlags.Ephemeral
+        });
+      }
 
-      parsedDate = chrono.parseDate(startString, reference);
+      parsedDate = chrono.parseDate(startString);
       if (!parsedDate) {
         return interaction.reply({
-          content: `Could not parse start time: "${startString}". Try formats like "reset", "reset+2", "tomorrow at 8pm EST", "11am PST", or "2024-01-15 20:00"`,
+          content: `Could not parse start time: "${startString}".\nTry formats like:\n- "reset", "reset+2"\n- "4pm EST", "8:30pm PST"\n- "tomorrow 4pm EST"`,
           flags: MessageFlags.Ephemeral
         });
       }
     }
 
     // Check if start time is in the past
-    if (parsedDate < new Date()) {
+    const now = new Date();
+    if (parsedDate < now) {
       return interaction.reply({
         content: 'Start time must be in the future.',
         flags: MessageFlags.Ephemeral
@@ -252,7 +256,8 @@ export const createCommand = {
     await interaction.reply({
       content,
       embeds: [embed],
-      components: buttons
+      components: buttons,
+      allowedMentions: { roles: [template.mentionRole] }
     });
 
     // Fetch the reply message
