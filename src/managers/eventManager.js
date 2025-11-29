@@ -11,7 +11,7 @@ export async function initializeEventManager() {
   return events;
 }
 
-export function createEvent({
+export function buildEventObject({
   channelId,
   guildId,
   creatorId,
@@ -36,19 +36,26 @@ export function createEvent({
     channelId,
     guildId,
     creatorId,
-    creatorName, // Store creator's username
+    creatorName,
     template,
     title,
     description: description || null,
     startTime,
     duration,
     capacity: templateConfig.capacity,
-    roles, // Array of role names
+    roles,
     signups: [], // Array of {userId, roles: string[], timestamp}
     waitlist: [] // Array of {userId, roles: string[], timestamp}
   };
 
-  events.set(id, event);
+  return event;
+}
+
+export function createEvent(eventData) {
+  // Accept either a full config object or a pre-built event object
+  const event = eventData.id ? eventData : buildEventObject(eventData);
+
+  events.set(event.id, event);
   saveEvents(events);
   return event;
 }

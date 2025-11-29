@@ -1,6 +1,6 @@
-import { SlashCommandBuilder, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { TEMPLATES, DEFAULT_TIMEZONE } from '../config.js';
-import { createEvent } from '../managers/eventManager.js';
+import { buildEventObject } from '../managers/eventManager.js';
 import { buildEventEmbed, buildEventButtons } from '../managers/embedManager.js';
 import { scheduleEventCleanup, scheduleEventReminder } from '../schedulers/eventScheduler.js';
 import * as chrono from 'chrono-node';
@@ -231,8 +231,8 @@ export const createCommand = {
       customRoles.push(...customRolesString.split(',').map(s => s.trim()));
     }
 
-    // Create event
-    const event = createEvent({
+    // Build preview event (not saved yet)
+    const event = buildEventObject({
       channelId: interaction.channelId,
       guildId: interaction.guildId,
       creatorId: interaction.user.id,
@@ -245,49 +245,53 @@ export const createCommand = {
       customRoles
     });
 
-    // Send embed with buttons
+    // Build preview embed and role buttons
     const embed = buildEventEmbed(event, interaction.member || interaction.user);
-    const buttons = buildEventButtons(event);
+    const roleButtons = buildEventButtons(event);
 
-    // Build content with role mention if configured
-    const template = TEMPLATES[subcommand];
-    const content = template.mentionRole ? `<@&${template.mentionRole}>` : undefined;
+    // Create Accept/Delete buttons with event data encoded in custom ID
+    const previewId = `${Date.now()}_${interaction.user.id}`;
+    const previewButtons = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId(`preview_accept_${previewId}`)
+          .setLabel('Accept')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId(`preview_delete_${previewId}`)
+          .setLabel('Delete')
+          .setStyle(ButtonStyle.Danger)
+      );
 
-    await interaction.reply({
-      content,
-      embeds: [embed],
-      components: buttons,
-      allowedMentions: { roles: [template.mentionRole] }
+    // Store event data temporarily (we'll use a Map in memory)
+    if (!global.pendingPreviews) {
+      global.pendingPreviews = new Map();
+    }
+    global.pendingPreviews.set(previewId, {
+      event,
+      createdAt: Date.now(),
+      interaction: {
+        channelId: interaction.channelId,
+        guildId: interaction.guildId,
+        userId: interaction.user.id,
+        username: interaction.member?.displayName || interaction.user.username
+      }
     });
 
-    // Fetch the reply message
-    const message = await interaction.fetchReply();
-
-    // Store message ID in event
-    event.messageId = message.id;
-
-    // Create a thread attached to the event message
-    try {
-      // Format: "Event title - Nov 27"
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const eventDate = parsedDate;
-      const formattedDate = `${monthNames[eventDate.getMonth()]} ${eventDate.getDate()}`;
-      const threadName = `${title} - ${formattedDate}`;
-
-      const thread = await message.startThread({
-        name: threadName,
-        autoArchiveDuration: 1440, // Archive after 24 hours of inactivity
-        reason: 'Event discussion thread'
-      });
-      event.threadId = thread.id;
-    } catch (error) {
-      console.error('Failed to create thread:', error);
+    // Clean up old previews (older than 15 minutes)
+    const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
+    for (const [key, value] of global.pendingPreviews.entries()) {
+      if (value.createdAt < fifteenMinutesAgo) {
+        global.pendingPreviews.delete(key);
+      }
     }
 
-    // Schedule reminder for 15 minutes before event start
-    scheduleEventReminder(event, interaction.client);
-
-    // Schedule cleanup for 2 hours after event start
-    scheduleEventCleanup(event, interaction.client);
+    // Send ephemeral preview with both role buttons and accept/delete buttons
+    await interaction.reply({
+      content: '**Preview:** Review your event before creation.',
+      embeds: [embed],
+      components: [...roleButtons, previewButtons],
+      flags: MessageFlags.Ephemeral
+    });
   }
 };

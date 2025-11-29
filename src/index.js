@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits, REST, Routes, MessageFlags } from 'discord.js';
 import { config } from 'dotenv';
 import { createCommand } from './commands/create.js';
-import { handleRoleButton } from './handlers/buttonHandler.js';
+import { handleRoleButton, handlePreviewAccept, handlePreviewDelete } from './handlers/buttonHandler.js';
 import { initializeEventManager, getAllEvents } from './managers/eventManager.js';
 import { scheduleEventReminder, scheduleEventCleanup } from './schedulers/eventScheduler.js';
 
@@ -69,6 +69,10 @@ client.on('interactionCreate', async (interaction) => {
     } else if (interaction.isButton()) {
       if (interaction.customId.startsWith('role_')) {
         await handleRoleButton(interaction);
+      } else if (interaction.customId.startsWith('preview_accept_')) {
+        await handlePreviewAccept(interaction);
+      } else if (interaction.customId.startsWith('preview_delete_')) {
+        await handlePreviewDelete(interaction);
       }
     }
   } catch (error) {
