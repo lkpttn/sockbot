@@ -33,11 +33,10 @@ export async function handleRoleButton(interaction) {
   }
 
   // Update the embed
+  // Use interaction.update() instead of deferUpdate() + message.edit()
+  // This updates the message AND acknowledges the interaction in one call
   const updatedEmbed = buildEventEmbed(event);
-  await interaction.message.edit({ embeds: [updatedEmbed] });
-
-  // Acknowledge the interaction without sending a message
-  return interaction.deferUpdate();
+  return interaction.update({ embeds: [updatedEmbed] });
 }
 
 export async function handlePreviewAccept(interaction) {
@@ -110,13 +109,10 @@ export async function handlePreviewAccept(interaction) {
   scheduleEventReminder(event, interaction.client);
   scheduleEventCleanup(event, interaction.client);
 
-  // Delete the preview message
+  // Delete the preview message (non-ephemeral messages can be deleted)
   await interaction.message.delete();
 
-  // Acknowledge (no reply needed as we deleted the message)
-  return interaction.deferUpdate().catch(() => {
-    // Ignore errors if message is already deleted
-  });
+  // No need to respond - the preview is deleted and the real event is posted
 }
 
 export async function handlePreviewDelete(interaction) {
@@ -128,11 +124,8 @@ export async function handlePreviewDelete(interaction) {
     global.pendingPreviews.delete(previewId);
   }
 
-  // Delete the preview message
+  // Delete the preview message (non-ephemeral messages can be deleted)
   await interaction.message.delete();
 
-  // Acknowledge (no reply needed as we deleted the message)
-  return interaction.deferUpdate().catch(() => {
-    // Ignore errors if message is already deleted
-  });
+  // No need to respond - the preview is deleted
 }

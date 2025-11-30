@@ -186,6 +186,9 @@ export const createCommand = {
             .setRequired(false))),
 
   async execute(interaction) {
+    // Defer reply immediately to prevent timeout (non-ephemeral so we can delete it later)
+    await interaction.deferReply();
+
     const subcommand = interaction.options.getSubcommand();
     const title = interaction.options.getString('title');
     const startString = interaction.options.getString('start');
@@ -201,17 +204,15 @@ export const createCommand = {
     if (!parsedDate) {
       // Require explicit timezone in the input for clarity
       if (!/\b(UTC|GMT|EST|EDT|CST|CDT|MST|MDT|PST|PDT)\b/i.test(startString)) {
-        return interaction.reply({
-          content: `Please include a timezone in your start time (e.g., "4pm EST", "tomorrow 8pm PST").`,
-          flags: MessageFlags.Ephemeral
+        return interaction.editReply({
+          content: `Please include a timezone in your start time (e.g., "4pm EST", "tomorrow 8pm PST").`
         });
       }
 
       parsedDate = chrono.parseDate(startString);
       if (!parsedDate) {
-        return interaction.reply({
-          content: `Could not parse start time: "${startString}".\nTry formats like:\n- "reset", "reset+2"\n- "4pm EST", "8:30pm PST"\n- "tomorrow 4pm EST", "Wednesday 8pm EST"`,
-          flags: MessageFlags.Ephemeral
+        return interaction.editReply({
+          content: `Could not parse start time: "${startString}".\nTry formats like:\n- "reset", "reset+2"\n- "4pm EST", "8:30pm PST"\n- "tomorrow 4pm EST", "Wednesday 8pm EST"`
         });
       }
     }
@@ -219,9 +220,8 @@ export const createCommand = {
     // Check if start time is in the past
     const now = new Date();
     if (parsedDate < now) {
-      return interaction.reply({
-        content: 'Start time must be in the future.',
-        flags: MessageFlags.Ephemeral
+      return interaction.editReply({
+        content: 'Start time must be in the future.'
       });
     }
 
@@ -287,11 +287,10 @@ export const createCommand = {
     }
 
     // Send ephemeral preview with both role buttons and accept/delete buttons
-    await interaction.reply({
-      content: '**Preview:** Review your event before creation.',
+    await interaction.editReply({
+      content: '**Preview:** Review your event before posting it.',
       embeds: [embed],
-      components: [...roleButtons, previewButtons],
-      flags: MessageFlags.Ephemeral
+      components: [...roleButtons, previewButtons]
     });
   }
 };

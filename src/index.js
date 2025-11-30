@@ -97,10 +97,23 @@ client.on('interactionCreate', async (interaction) => {
     }
   } catch (error) {
     console.error('Error handling interaction:', error);
+
+    // Only try to respond if the interaction hasn't been handled yet
+    // and hasn't expired (code 10062 = Unknown interaction)
+    if (error.code === 10062) {
+      // Interaction expired, can't respond
+      return;
+    }
+
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
         content: 'An error occurred processing your request.',
         flags: MessageFlags.Ephemeral
+      }).catch(console.error);
+    } else if (interaction.deferred) {
+      // Interaction was deferred but not replied to yet
+      await interaction.editReply({
+        content: 'An error occurred processing your request.'
       }).catch(console.error);
     }
   }
