@@ -23,12 +23,9 @@ export function buildEventEmbed(event, creator = null) {
     embed.setFooter({ text: `Created by ${event.creatorName}` });
   }
 
-  // Accepted signups with overflow handling
+  // Accepted signups
   const signupCount = event.signups.length;
-  const FIELD_CHAR_LIMIT = 1024;
-  const acceptedFields = [];
-  let currentFieldValue = '';
-  let fieldIndex = 0;
+  let acceptedValue = '';
 
   if (signupCount > 0) {
     for (const signup of event.signups) {
@@ -36,75 +33,34 @@ export function buildEventEmbed(event, creator = null) {
       // Sort roles in standard order, then map to emojis
       const sortedRoles = sortRoles(signup.roles);
       const roleEmojis = sortedRoles.map(r => ROLE_EMOJIS[r] || DEFAULT_ROLE_EMOJI).join(' ');
-      const line = `- ${mention} ${roleEmojis}\n`;
-
-      // Check if adding this line would exceed the limit
-      if (currentFieldValue.length + line.length > FIELD_CHAR_LIMIT) {
-        // Save current field and start a new one
-        acceptedFields.push({
-          name: fieldIndex === 0 ? `Accepted (${signupCount}/${event.capacity})` : `Accepted (cont.)`,
-          value: currentFieldValue,
-          inline: false
-        });
-        currentFieldValue = line;
-        fieldIndex++;
-      } else {
-        currentFieldValue += line;
-      }
+      acceptedValue += `- ${mention} ${roleEmojis}\n`;
     }
-
-    // Add the last field
-    acceptedFields.push({
-      name: fieldIndex === 0 ? `Accepted (${signupCount}/${event.capacity})` : `Accepted (cont.)`,
-      value: currentFieldValue,
-      inline: false
-    });
   } else {
-    acceptedFields.push({
-      name: `Accepted (${signupCount}/${event.capacity})`,
-      value: '*No signups yet*',
-      inline: false
-    });
+    acceptedValue = '*No signups yet*';
   }
 
-  embed.addFields(...acceptedFields);
+  embed.addFields({
+    name: `Accepted (${signupCount}/${event.capacity})`,
+    value: acceptedValue,
+    inline: false
+  });
 
-  // Waitlist with overflow handling
+  // Waitlist
   if (event.waitlist.length > 0) {
-    const waitlistFields = [];
-    let currentFieldValue = '';
-    let fieldIndex = 0;
-
+    let waitlistValue = '';
     for (const signup of event.waitlist) {
       const mention = `<@${signup.userId}>`;
       // Sort roles in standard order, then map to emojis
       const sortedRoles = sortRoles(signup.roles);
       const roleEmojis = sortedRoles.map(r => ROLE_EMOJIS[r] || DEFAULT_ROLE_EMOJI).join(' ');
-      const line = `- ${mention} ${roleEmojis}\n`;
-
-      // Check if adding this line would exceed the limit
-      if (currentFieldValue.length + line.length > FIELD_CHAR_LIMIT) {
-        // Save current field and start a new one
-        waitlistFields.push({
-          name: fieldIndex === 0 ? `Waitlist (${event.waitlist.length})` : `Waitlist (cont.)`,
-          value: currentFieldValue,
-          inline: false
-        });
-        currentFieldValue = line;
-        fieldIndex++;
-      } else {
-        currentFieldValue += line;
-      }
+      waitlistValue += `- ${mention} ${roleEmojis}\n`;
     }
 
-    // Add the last field
-    waitlistFields.push({
-      name: fieldIndex === 0 ? `Waitlist (${event.waitlist.length})` : `Waitlist (cont.)`,
-      value: currentFieldValue,
+    embed.addFields({
+      name: `Waitlist (${event.waitlist.length})`,
+      value: waitlistValue,
       inline: false
     });
-
-    embed.addFields(...waitlistFields);
   }
 
   return embed;

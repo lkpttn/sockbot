@@ -24,6 +24,14 @@ export async function handleRoleButton(interaction) {
   // Toggle the role
   const result = await toggleRole(event, userId, roleName, interaction.user);
 
+  // Check if there was an error (e.g., role limit reached)
+  if (!result.success) {
+    return interaction.reply({
+      content: result.error,
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
   // Update the embed
   const updatedEmbed = buildEventEmbed(event);
   await interaction.message.edit({ embeds: [updatedEmbed] });

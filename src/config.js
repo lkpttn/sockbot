@@ -3,35 +3,35 @@ export const TEMPLATES = {
     name: 'Fractal',
     capacity: 5,
     duration: 120,
-    roles: ['DPS', 'Boon DPS', 'Healer', 'Glut'],
+    roles: ['Any', 'DPS', 'Boon DPS', 'Healer', 'Glut'],
     mentionRole: '1365144192149487768' // Fractals role ID
   },
   raid: {
     name: 'Raid',
     capacity: 10,
     duration: 120,
-    roles: ['DPS', 'Boon DPS', 'Healer', 'Tank', 'Kite'],
+    roles: ['Any', 'DPS', 'Boon DPS', 'Healer', 'Tank', 'Kite'],
     mentionRole: '1364345501813833728' // Raids role ID
   },
   party: {
     name: 'Party',
     capacity: 5,
     duration: 90,
-    roles: ['DPS', 'Boon DPS', 'Healer'],
+    roles: ['Any', 'DPS', 'Boon DPS', 'Healer'],
     mentionRole: '1391807927358193674' // Content role ID
   },
   squad: {
     name: 'Squad',
     capacity: 10,
     duration: 90,
-    roles: ['DPS', 'Boon DPS', 'Healer'],
+    roles: ['Any', 'DPS', 'Boon DPS', 'Healer'],
     mentionRole: '1391807927358193674' // Content role ID
   },
   freeform: {
     name: 'Freeform',
     capacity: 20,
     duration: 60,
-    roles: ['DPS', 'Boon DPS', 'Healer'],
+    roles: ['Any', 'DPS', 'Boon DPS', 'Healer'],
     mentionRole: '1391807927358193674' // Content role ID
   }
 };
@@ -46,17 +46,21 @@ export const DEFAULT_TIMEZONE = 'America/New_York';
 // To get emoji IDs: Right-click emoji in Discord → "Copy Link" → ID is in the URL
 // Format: '<:emoji_name:emoji_id>' for static, '<a:emoji_name:emoji_id>' for animated
 export const ROLE_EMOJIS = {
-  'Healer': '<:heal:1443359972762325022>',
-  'Boon DPS': '<:boondps:1443359937253212383>',
+  'Any': '<:flex:1443297786580963440>',
   'DPS': '<:dps:1443359897919029351>',
+  'Boon DPS': '<:boondps:1444656305553018990>',
+  'Healer': '<:heal:1444658585769476197>',
   'Tank': '<:tank:1443360014516621444>',
+  'Kite': '<:special:1444658160068595945>', // TODO: Add custom emoji for Kite
+  'Glut': '<:special:1444658160068595945>', // TODO: Add custom emoji for Glut
+  'Special': '<:special:1444658160068595945>'
 };
 
 // Default emoji for custom roles not in ROLE_EMOJIS
-export const DEFAULT_ROLE_EMOJI = '<:special:1443297786580963440>';
+export const DEFAULT_ROLE_EMOJI = '<:special:1444658160068595945>';
 
 // Role display order (for sorting)
-export const ROLE_ORDER = ['DPS', 'Boon DPS', 'Healer'];
+export const ROLE_ORDER = ['Any', 'DPS', 'Boon DPS', 'Healer', 'Tank', 'Kite', 'Glut', 'Special'];
 
 // Helper function to sort roles in standard order
 export function sortRoles(roles) {

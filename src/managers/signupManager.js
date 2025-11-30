@@ -1,6 +1,8 @@
 import { saveEvents } from './persistenceManager.js';
 import { getAllEvents } from './eventManager.js';
 
+const MAX_ROLES_PER_USER = 2;
+
 export async function toggleRole(event, userId, roleName, user) {
   // Check if user is signed up
   let signup = event.signups.find(s => s.userId === userId);
@@ -58,7 +60,11 @@ export async function toggleRole(event, userId, roleName, user) {
         }
       }
     } else {
-      // Role doesn't exist - add it
+      // Role doesn't exist - check if user has reached role limit
+      if (signup.roles.length >= MAX_ROLES_PER_USER) {
+        return { success: false, error: `You can only sign up for ${MAX_ROLES_PER_USER} roles per event.` };
+      }
+      // Add the role
       signup.roles.push(roleName);
     }
   } else {
@@ -94,4 +100,6 @@ export async function toggleRole(event, userId, roleName, user) {
   // Save events after any signup changes
   const eventsMap = new Map(getAllEvents().map(e => [e.id, e]));
   await saveEvents(eventsMap);
+
+  return { success: true };
 }
