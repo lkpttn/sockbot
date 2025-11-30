@@ -6,7 +6,7 @@ const scheduledReminders = new Map(); // eventId -> timeoutId
 
 export function scheduleEventCleanup(event, client) {
   // Calculate cleanup time: 2 hours after event start
-  const cleanupTime = new Date(event.startTime.getTime() + 2 * 60 * 60 * 1000);
+  const cleanupTime = new Date(event.startTime.getTime() + 2.5 * 60 * 60 * 1000);
   const delay = cleanupTime.getTime() - Date.now();
 
   if (delay < 0) {
