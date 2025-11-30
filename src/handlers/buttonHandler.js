@@ -4,8 +4,17 @@ import { toggleRole } from '../managers/signupManager.js';
 import { buildEventEmbed, buildEventButtons } from '../managers/embedManager.js';
 import { scheduleEventReminder, scheduleEventCleanup } from '../schedulers/eventScheduler.js';
 import { TEMPLATES } from '../config.js';
-import { formatThreadDate } from '../utils/dateUtils.js';
 import { getPreview, deletePreview, hasPreview } from '../managers/previewManager.js';
+
+/**
+ * Format a date for thread naming
+ * @param {Date} date - The date to format
+ * @returns {string} - Formatted date (e.g., "Nov 27")
+ */
+function formatThreadDate(date) {
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${monthNames[date.getMonth()]} ${date.getDate()}`;
+}
 
 export async function handleRoleButton(interaction) {
   // Parse button custom ID: role_{eventId}_{roleName}
