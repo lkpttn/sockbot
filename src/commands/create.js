@@ -1,9 +1,42 @@
 import { SlashCommandBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { TEMPLATES, DEFAULT_TIMEZONE } from '../config.js';
+import { TEMPLATES } from '../config.js';
 import { buildEventObject } from '../managers/eventManager.js';
 import { buildEventEmbed, buildEventButtons } from '../managers/embedManager.js';
-import { scheduleEventCleanup, scheduleEventReminder } from '../schedulers/eventScheduler.js';
+import { storePreview, cleanupExpiredPreviews } from '../managers/previewManager.js';
 import * as chrono from 'chrono-node';
+
+/**
+ * Helper to build a subcommand with consistent options
+ * @param {string} name - Subcommand name
+ * @param {string} description - Subcommand description
+ * @returns {Function} - Subcommand builder function
+ */
+function buildEventSubcommand(name, description) {
+  return (subcommand) =>
+    subcommand
+      .setName(name)
+      .setDescription(description)
+      .addStringOption(option =>
+        option.setName('title')
+          .setDescription('Event title')
+          .setRequired(true))
+      .addStringOption(option =>
+        option.setName('start')
+          .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
+          .setRequired(true))
+      .addStringOption(option =>
+        option.setName('description')
+          .setDescription('Event description')
+          .setRequired(false))
+      .addIntegerOption(option =>
+        option.setName('duration')
+          .setDescription('Duration in minutes')
+          .setRequired(false))
+      .addStringOption(option =>
+        option.setName('custom-roles')
+          .setDescription('Custom roles (comma-separated: "Glutbender, Kiter")')
+          .setRequired(false));
+}
 
 /**
  * Parse GW2 reset time strings (00:00 UTC / midnight UTC)
@@ -64,126 +97,11 @@ export const createCommand = {
   data: new SlashCommandBuilder()
     .setName('create')
     .setDescription('Create a new event')
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('fractal')
-        .setDescription('Create a Fractal event')
-        .addStringOption(option =>
-          option.setName('title')
-            .setDescription('Event title')
-            .setRequired(true))
-        .addStringOption(option =>
-          option.setName('start')
-            .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
-            .setRequired(true))
-        .addStringOption(option =>
-          option.setName('description')
-            .setDescription('Event description')
-            .setRequired(false))
-        .addIntegerOption(option =>
-          option.setName('duration')
-            .setDescription('Duration in minutes')
-            .setRequired(false))
-        .addStringOption(option =>
-          option.setName('custom-roles')
-            .setDescription('Custom roles (comma-separated: "Glutbender, Kiter")')
-            .setRequired(false)))
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('party')
-        .setDescription('Create a Party event')
-        .addStringOption(option =>
-          option.setName('title')
-            .setDescription('Event title')
-            .setRequired(true))
-        .addStringOption(option =>
-          option.setName('start')
-            .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
-            .setRequired(true))
-        .addStringOption(option =>
-          option.setName('description')
-            .setDescription('Event description')
-            .setRequired(false))
-        .addIntegerOption(option =>
-          option.setName('duration')
-            .setDescription('Duration in minutes')
-            .setRequired(false))
-        .addStringOption(option =>
-          option.setName('custom-roles')
-            .setDescription('Custom roles (comma-separated: "Glutbender, Kiter")')
-            .setRequired(false)))
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('raid')
-        .setDescription('Create a Raid event')
-        .addStringOption(option =>
-          option.setName('title')
-            .setDescription('Event title')
-            .setRequired(true))
-        .addStringOption(option =>
-          option.setName('start')
-            .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
-            .setRequired(true))
-        .addStringOption(option =>
-          option.setName('description')
-            .setDescription('Event description')
-            .setRequired(false))
-        .addIntegerOption(option =>
-          option.setName('duration')
-            .setDescription('Duration in minutes')
-            .setRequired(false))
-        .addStringOption(option =>
-          option.setName('custom-roles')
-            .setDescription('Custom roles (comma-separated: "Glutbender, Kiter")')
-            .setRequired(false)))
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('squad')
-        .setDescription('Create a Squad event')
-        .addStringOption(option =>
-          option.setName('title')
-            .setDescription('Event title')
-            .setRequired(true))
-        .addStringOption(option =>
-          option.setName('start')
-            .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
-            .setRequired(true))
-        .addStringOption(option =>
-          option.setName('description')
-            .setDescription('Event description')
-            .setRequired(false))
-        .addIntegerOption(option =>
-          option.setName('duration')
-            .setDescription('Duration in minutes')
-            .setRequired(false))
-        .addStringOption(option =>
-          option.setName('custom-roles')
-            .setDescription('Custom roles (comma-separated: "Glutbender, Kiter")')
-            .setRequired(false)))
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('freeform')
-        .setDescription('Create a Freeform event')
-        .addStringOption(option =>
-          option.setName('title')
-            .setDescription('Event title')
-            .setRequired(true))
-        .addStringOption(option =>
-          option.setName('start')
-            .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
-            .setRequired(true))
-        .addStringOption(option =>
-          option.setName('description')
-            .setDescription('Event description')
-            .setRequired(false))
-        .addIntegerOption(option =>
-          option.setName('duration')
-            .setDescription('Duration in minutes')
-            .setRequired(false))
-        .addStringOption(option =>
-          option.setName('custom-roles')
-            .setDescription('Custom roles (comma-separated: "Glutbender, Kiter")')
-            .setRequired(false))),
+    .addSubcommand(buildEventSubcommand('fractal', 'Create a Fractal event'))
+    .addSubcommand(buildEventSubcommand('party', 'Create a Party event'))
+    .addSubcommand(buildEventSubcommand('raid', 'Create a Raid event'))
+    .addSubcommand(buildEventSubcommand('squad', 'Create a Squad event'))
+    .addSubcommand(buildEventSubcommand('freeform', 'Create a Freeform event')),
 
   async execute(interaction) {
     // Defer reply immediately to prevent timeout (non-ephemeral so we can delete it later)
@@ -263,13 +181,9 @@ export const createCommand = {
           .setStyle(ButtonStyle.Danger)
       );
 
-    // Store event data temporarily (we'll use a Map in memory)
-    if (!global.pendingPreviews) {
-      global.pendingPreviews = new Map();
-    }
-    global.pendingPreviews.set(previewId, {
+    // Store event data temporarily using preview manager
+    storePreview(previewId, {
       event,
-      createdAt: Date.now(),
       interaction: {
         channelId: interaction.channelId,
         guildId: interaction.guildId,
@@ -278,15 +192,10 @@ export const createCommand = {
       }
     });
 
-    // Clean up old previews (older than 15 minutes)
-    const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
-    for (const [key, value] of global.pendingPreviews.entries()) {
-      if (value.createdAt < fifteenMinutesAgo) {
-        global.pendingPreviews.delete(key);
-      }
-    }
+    // Clean up old expired previews
+    cleanupExpiredPreviews();
 
-    // Send ephemeral preview with both role buttons and accept/delete buttons
+    // Send preview with both role buttons and accept/delete buttons
     await interaction.editReply({
       content: '**Preview:** Review your event before posting it.',
       embeds: [embed],

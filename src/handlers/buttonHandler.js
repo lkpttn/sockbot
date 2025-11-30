@@ -4,10 +4,12 @@ import { toggleRole } from '../managers/signupManager.js';
 import { buildEventEmbed, buildEventButtons } from '../managers/embedManager.js';
 import { scheduleEventReminder, scheduleEventCleanup } from '../schedulers/eventScheduler.js';
 import { TEMPLATES } from '../config.js';
+import { formatThreadDate } from '../utils/dateUtils.js';
+import { getPreview, deletePreview, hasPreview } from '../managers/previewManager.js';
 
 export async function handleRoleButton(interaction) {
   // Parse button custom ID: role_{eventId}_{roleName}
-  const [, eventId, ...roleNameParts] = interaction.customId.split('_');
+  const [, _eventId, ...roleNameParts] = interaction.customId.split('_');
   const roleName = roleNameParts.join('_'); // Handle role names with underscores
 
   const event = getEventByMessageId(interaction.message.id);
@@ -44,17 +46,17 @@ export async function handlePreviewAccept(interaction) {
   const previewId = interaction.customId.replace('preview_accept_', '');
 
   // Check if preview exists and hasn't expired
-  if (!global.pendingPreviews || !global.pendingPreviews.has(previewId)) {
+  if (!hasPreview(previewId)) {
     return interaction.reply({
       content: 'This preview has expired (15 minute timeout). Please create the event again.',
       flags: MessageFlags.Ephemeral
     });
   }
 
-  const { event, interaction: storedInteraction } = global.pendingPreviews.get(previewId);
+  const { event, interaction: storedInteraction } = getPreview(previewId);
 
   // Remove from pending previews
-  global.pendingPreviews.delete(previewId);
+  deletePreview(previewId);
 
   // Get the channel to post the real event
   const channel = await interaction.client.channels.fetch(storedInteraction.channelId);
@@ -87,9 +89,8 @@ export async function handlePreviewAccept(interaction) {
 
   // Create a thread attached to the event message
   try {
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const eventDate = new Date(event.startTime);
-    const formattedDate = `${monthNames[eventDate.getMonth()]} ${eventDate.getDate()}`;
+    const formattedDate = formatThreadDate(eventDate);
     const threadName = `${event.title} - ${formattedDate}`;
 
     const thread = await message.startThread({
@@ -110,9 +111,12 @@ export async function handlePreviewAccept(interaction) {
   scheduleEventCleanup(event, interaction.client);
 
   // Delete the preview message (non-ephemeral messages can be deleted)
-  await interaction.message.delete();
-
-  // No need to respond - the preview is deleted and the real event is posted
+  try {
+    await interaction.message.delete();
+  } catch (error) {
+    // Message may already be deleted - ignore
+    console.log('Preview message already deleted or inaccessible');
+  }
 }
 
 export async function handlePreviewDelete(interaction) {
@@ -120,12 +124,13 @@ export async function handlePreviewDelete(interaction) {
   const previewId = interaction.customId.replace('preview_delete_', '');
 
   // Remove from pending previews if it exists
-  if (global.pendingPreviews && global.pendingPreviews.has(previewId)) {
-    global.pendingPreviews.delete(previewId);
-  }
+  deletePreview(previewId);
 
   // Delete the preview message (non-ephemeral messages can be deleted)
-  await interaction.message.delete();
-
-  // No need to respond - the preview is deleted
+  try {
+    await interaction.message.delete();
+  } catch (error) {
+    // Message may already be deleted - ignore
+    console.log('Preview message already deleted or inaccessible');
+  }
 }
