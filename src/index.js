@@ -2,8 +2,8 @@ import { Client, GatewayIntentBits, REST, Routes, MessageFlags } from 'discord.j
 import { config } from 'dotenv';
 import { createCommand } from './commands/create.js';
 import { handleRoleButton, handlePreviewAccept, handlePreviewDelete } from './handlers/buttonHandler.js';
-import { initializeEventManager, getAllEvents } from './managers/eventManager.js';
-import { scheduleEventReminder, scheduleEventCleanup } from './schedulers/eventScheduler.js';
+import { initializeEventManager, getAllEvents, deleteMultipleEvents } from './managers/eventManager.js';
+import { scheduleEventReminder, scheduleEventCleanup, shouldCleanupEvent } from './schedulers/eventScheduler.js';
 
 config();
 
@@ -45,19 +45,39 @@ client.once('clientReady', async () => {
   const events = getAllEvents();
   console.log(`Restoring ${events.length} events`);
 
+  let cleanedUpCount = 0;
+  let restoredCount = 0;
+  let skippedCount = 0;
+  const eventsToCleanup = [];
+
   for (const event of events) {
-    // Re-schedule reminders and cleanups for future events
     const now = new Date();
-    if (event.startTime > now) {
+
+    // Check if event should have been cleaned up already
+    if (shouldCleanupEvent(event)) {
+      console.log(`Cleaning up old event: ${event.title}`);
+      eventsToCleanup.push(event.id);
+      cleanedUpCount++;
+    } else if (event.startTime > now) {
+      // Future event - re-schedule timers
       scheduleEventReminder(event, client);
       scheduleEventCleanup(event, client);
       console.log(`Re-scheduled timers for event: ${event.title}`);
+      restoredCount++;
     } else {
+      // Past event but within cleanup window
       console.log(`Skipping past event: ${event.title}`);
+      scheduleEventCleanup(event, client);
+      skippedCount++;
     }
   }
 
-  console.log('Event restoration complete');
+  // Batch delete old events
+  if (eventsToCleanup.length > 0) {
+    deleteMultipleEvents(eventsToCleanup);
+  }
+
+  console.log(`Event restoration complete: ${restoredCount} restored, ${skippedCount} skipped, ${cleanedUpCount} cleaned up`);
 });
 
 client.on('interactionCreate', async (interaction) => {

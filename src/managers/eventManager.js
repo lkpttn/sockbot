@@ -72,8 +72,17 @@ export function getAllEvents() {
   return Array.from(events.values());
 }
 
-export function deleteEvent(id) {
+export function deleteEvent(id, skipSave = false) {
   events.delete(id);
+  if (!skipSave) {
+    saveEvents(events);
+  }
+}
+
+export function deleteMultipleEvents(ids) {
+  for (const id of ids) {
+    events.delete(id);
+  }
   saveEvents(events);
 }
 

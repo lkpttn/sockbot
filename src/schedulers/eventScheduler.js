@@ -4,13 +4,16 @@ import { REMINDER_TIME_MINUTES } from '../config.js';
 const scheduledCleanups = new Map(); // eventId -> timeoutId
 const scheduledReminders = new Map(); // eventId -> timeoutId
 
+// Cleanup threshold: 2.5 hours after event start
+const CLEANUP_DELAY_HOURS = 2.5;
+
 export function scheduleEventCleanup(event, client) {
-  // Calculate cleanup time: 2 hours after event start
-  const cleanupTime = new Date(event.startTime.getTime() + 2.5 * 60 * 60 * 1000);
+  // Calculate cleanup time
+  const cleanupTime = new Date(event.startTime.getTime() + CLEANUP_DELAY_HOURS * 60 * 60 * 1000);
   const delay = cleanupTime.getTime() - Date.now();
 
   if (delay < 0) {
-    // Event is in the past, clean up immediately
+    // Event cleanup time has passed, clean up immediately
     cleanupEvent(event, client);
     return;
   }
@@ -22,6 +25,11 @@ export function scheduleEventCleanup(event, client) {
   }, delay);
 
   scheduledCleanups.set(event.id, timeoutId);
+}
+
+export function shouldCleanupEvent(event) {
+  const cleanupTime = new Date(event.startTime.getTime() + CLEANUP_DELAY_HOURS * 60 * 60 * 1000);
+  return Date.now() > cleanupTime.getTime();
 }
 
 async function cleanupEvent(event, client) {
