@@ -3,7 +3,7 @@ import { TEMPLATES } from '../config.js';
 import { buildEventObject } from '../managers/eventManager.js';
 import { buildEventEmbed, buildEventButtons } from '../managers/embedManager.js';
 import { storePreview, cleanupExpiredPreviews } from '../managers/previewManager.js';
-import * as chrono from 'chrono-node';
+import { parseTimeWithTimezoneFix, validateEventDate } from '../dateParser.js';
 
 /**
  * Helper to build a subcommand with consistent options
@@ -38,60 +38,6 @@ function buildEventSubcommand(name, description) {
           .setRequired(false));
 }
 
-/**
- * Parse GW2 reset time strings (00:00 UTC / midnight UTC)
- * Supports: "reset", "at reset", "reset+1", "reset +2", "tomorrow reset", etc.
- * @param {string} timeString - The time string to parse
- * @returns {Date|null} - Parsed date or null if not a reset time string
- */
-function parseResetTime(timeString) {
-  const lowerStr = timeString.toLowerCase().trim();
-
-  // Check if string contains "reset"
-  if (!lowerStr.includes('reset')) {
-    return null;
-  }
-
-  // GW2 reset is at 00:00 UTC (midnight UTC)
-  const RESET_HOUR_UTC = 0;
-
-  // Extract offset if present (e.g., "reset+2" or "reset +2")
-  const offsetMatch = lowerStr.match(/reset\s*\+?\s*(\d+(?:\.\d+)?)/);
-  const offsetHours = offsetMatch ? parseFloat(offsetMatch[1]) : 0;
-
-  // Check if "tomorrow" is mentioned
-  const isTomorrow = lowerStr.includes('tomorrow');
-
-  // Get current UTC time
-  const now = new Date();
-
-  // Calculate next reset time in UTC
-  let resetDate = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    RESET_HOUR_UTC,
-    0,
-    0,
-    0
-  ));
-
-  // If reset has already passed today and not explicitly "tomorrow", use tomorrow
-  if (resetDate <= now && !isTomorrow) {
-    resetDate.setUTCDate(resetDate.getUTCDate() + 1);
-  } else if (isTomorrow) {
-    // Explicitly tomorrow
-    resetDate.setUTCDate(resetDate.getUTCDate() + 1);
-  }
-
-  // Add offset in hours
-  if (offsetHours > 0) {
-    resetDate.setUTCHours(resetDate.getUTCHours() + Math.floor(offsetHours));
-    resetDate.setUTCMinutes(resetDate.getUTCMinutes() + Math.round((offsetHours % 1) * 60));
-  }
-
-  return resetDate;
-}
 
 export const createCommand = {
   data: new SlashCommandBuilder()
@@ -114,32 +60,27 @@ export const createCommand = {
     const duration = interaction.options.getInteger('duration');
     const customRolesString = interaction.options.getString('custom-roles');
 
-    let parsedDate;
-
-    // Try GW2 reset time parsing first
-    parsedDate = parseResetTime(startString);
+    // Parse the start time with timezone-aware fixing
+    const parsedDate = parseTimeWithTimezoneFix(startString);
 
     if (!parsedDate) {
-      // Require explicit timezone in the input for clarity
+      // Check if timezone is missing
       if (!/\b(UTC|GMT|EST|EDT|CST|CDT|MST|MDT|PST|PDT)\b/i.test(startString)) {
         return interaction.editReply({
           content: `Please include a timezone in your start time (e.g., "4pm EST", "tomorrow 8pm PST").`
         });
       }
 
-      parsedDate = chrono.parseDate(startString);
-      if (!parsedDate) {
-        return interaction.editReply({
-          content: `Could not parse start time: "${startString}".\nTry formats like:\n- "reset", "reset+2"\n- "4pm EST", "8:30pm PST"\n- "tomorrow 4pm EST", "Wednesday 8pm EST"`
-        });
-      }
+      return interaction.editReply({
+        content: `Could not parse start time: "${startString}".\nTry formats like:\n- "reset", "reset+2"\n- "today 4pm EST", "tomorrow 8pm PST"\n- "Wednesday 8pm EST", "4pm EST"`
+      });
     }
 
-    // Check if start time is in the past
-    const now = new Date();
-    if (parsedDate < now) {
+    // Validate the parsed date
+    const validation = validateEventDate(parsedDate);
+    if (!validation.valid) {
       return interaction.editReply({
-        content: 'Start time must be in the future.'
+        content: validation.error
       });
     }
 
