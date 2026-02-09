@@ -1,6 +1,7 @@
 import * as chrono from 'chrono-node';
+import { DEFAULT_TIMEZONE } from './config.js';
 
-// Timezone name to IANA timezone mapping
+// Timezone abbreviation to IANA timezone mapping
 const TIMEZONE_MAP = {
   'UTC': 'UTC',
   'GMT': 'UTC',
@@ -13,6 +14,24 @@ const TIMEZONE_MAP = {
   'PST': 'America/Los_Angeles',
   'PDT': 'America/Los_Angeles'
 };
+
+const TIMEZONE_PATTERN = /\b(UTC|GMT|EST|EDT|CST|CDT|MST|MDT|PST|PDT)\b/i;
+
+/**
+ * Extract timezone info from a time string
+ * @param {string} timeString - The time string to search
+ * @returns {{ abbreviation: string, iana: string } | null}
+ */
+export function extractTimezone(timeString) {
+  const match = timeString.match(TIMEZONE_PATTERN);
+  if (!match) return null;
+
+  const abbreviation = match[1].toUpperCase();
+  return {
+    abbreviation,
+    iana: TIMEZONE_MAP[abbreviation]
+  };
+}
 
 /**
  * Parse GW2 reset time strings (00:00 UTC / midnight UTC)
@@ -73,69 +92,24 @@ export function parseResetTime(timeString, referenceDate = new Date()) {
 }
 
 /**
- * Fix timezone-aware parsing for "today" and "tomorrow" keywords
- * Chrono-node interprets "today" based on UTC date, which causes issues
- * when it's after midnight UTC but still the previous day in US timezones
+ * Parse an event time string with full timezone awareness.
+ * Uses chrono-node's ReferenceWithTimezone so all relative references
+ * (today, tomorrow, day names, "this evening", etc.) resolve correctly
+ * in the user's timezone — even when it's past midnight in UTC.
  *
  * @param {string} timeString - The time string to parse
+ * @param {string} ianaTimezone - IANA timezone for resolving relative references
  * @param {Date} referenceDate - The reference date (defaults to now)
  * @returns {Date|null} - Parsed date or null if parsing failed
  */
-export function parseTimeWithTimezoneFix(timeString, referenceDate = new Date()) {
-  // First check if it's a reset time (pass referenceDate to it)
+export function parseEventTime(timeString, ianaTimezone = DEFAULT_TIMEZONE, referenceDate = new Date()) {
+  // First check if it's a reset time (always UTC-based)
   const resetTime = parseResetTime(timeString, referenceDate);
-  if (resetTime) {
-    return resetTime;
-  }
+  if (resetTime) return resetTime;
 
-  // Extract timezone from the input
-  const tzMatch = timeString.match(/\b(UTC|GMT|EST|EDT|CST|CDT|MST|MDT|PST|PDT)\b/i);
-  if (!tzMatch) {
-    // No timezone specified, require it
-    return null;
-  }
-
-  const timezone = tzMatch[1].toUpperCase();
-  const ianaTimezone = TIMEZONE_MAP[timezone];
-
-  // Check if the string contains "today" or "tomorrow"
-  const hasToday = /\btoday\b/i.test(timeString);
-  const hasTomorrow = /\btomorrow\b/i.test(timeString);
-
-  if (hasToday || hasTomorrow) {
-    // Get the current date in the specified timezone
-    const localDateStr = referenceDate.toLocaleDateString('en-US', {
-      timeZone: ianaTimezone,
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-
-    let replacementDate = localDateStr;
-
-    // If "tomorrow" is specified, we need to add a day
-    if (hasTomorrow) {
-      const tomorrow = new Date(referenceDate);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      replacementDate = tomorrow.toLocaleDateString('en-US', {
-        timeZone: ianaTimezone,
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    }
-
-    // Replace "today" or "tomorrow" with the actual date in the target timezone
-    const fixedTimeString = timeString
-      .replace(/\btoday\b/i, replacementDate)
-      .replace(/\btomorrow\b/i, replacementDate);
-
-    // Parse with chrono using the fixed string
-    return chrono.parseDate(fixedTimeString, referenceDate);
-  }
-
-  // No "today" or "tomorrow", parse normally
-  return chrono.parseDate(timeString, referenceDate);
+  // Use chrono with timezone-aware reference so relative date words
+  // ("today", "tomorrow", "Friday", etc.) resolve in the user's timezone
+  return chrono.parseDate(timeString, { instant: referenceDate, timezone: ianaTimezone });
 }
 
 /**

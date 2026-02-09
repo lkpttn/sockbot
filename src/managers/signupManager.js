@@ -1,7 +1,23 @@
-import { saveEvents } from './persistenceManager.js';
-import { getAllEvents } from './eventManager.js';
+import { save } from './eventManager.js';
 
 const MAX_ROLES_PER_USER = 2;
+
+/**
+ * Fetch the thread channel for an event, if it exists
+ * @param {Object} user - Discord user object (has .client)
+ * @param {string} threadId - Thread ID to fetch
+ * @returns {Object|null} - Thread channel or null
+ */
+async function fetchThread(user, threadId) {
+  if (!threadId) return null;
+  try {
+    const channel = await user.client.channels.fetch(threadId);
+    return (channel && channel.isThread()) ? channel : null;
+  } catch (error) {
+    console.error('Failed to fetch thread:', error);
+    return null;
+  }
+}
 
 export async function toggleRole(event, userId, roleName, user) {
   // Check if user is signed up
@@ -28,13 +44,12 @@ export async function toggleRole(event, userId, roleName, user) {
         } else {
           event.signups = event.signups.filter(s => s.userId !== userId);
 
+          const thread = await fetchThread(user, event.threadId);
+
           // Remove user from thread
-          if (event.threadId) {
+          if (thread) {
             try {
-              const channel = await user.client.channels.fetch(event.threadId);
-              if (channel && channel.isThread()) {
-                await channel.members.remove(userId);
-              }
+              await thread.members.remove(userId);
             } catch (error) {
               console.error('Failed to remove user from thread:', error);
             }
@@ -45,13 +60,10 @@ export async function toggleRole(event, userId, roleName, user) {
             const promoted = event.waitlist.shift();
             event.signups.push(promoted);
 
-            // Add promoted user to thread
-            if (event.threadId) {
+            // Add promoted user to thread (reuse fetched thread)
+            if (thread) {
               try {
-                const channel = await user.client.channels.fetch(event.threadId);
-                if (channel && channel.isThread()) {
-                  await channel.members.add(promoted.userId);
-                }
+                await thread.members.add(promoted.userId);
               } catch (error) {
                 console.error('Failed to add promoted user to thread:', error);
               }
@@ -84,12 +96,10 @@ export async function toggleRole(event, userId, roleName, user) {
       event.signups.push(newSignup);
 
       // Add user to thread if it exists
-      if (event.threadId) {
+      const thread = await fetchThread(user, event.threadId);
+      if (thread) {
         try {
-          const channel = await user.client.channels.fetch(event.threadId);
-          if (channel && channel.isThread()) {
-            await channel.members.add(userId);
-          }
+          await thread.members.add(userId);
         } catch (error) {
           console.error('Failed to add user to thread:', error);
         }
@@ -98,8 +108,7 @@ export async function toggleRole(event, userId, roleName, user) {
   }
 
   // Save events after any signup changes
-  const eventsMap = new Map(getAllEvents().map(e => [e.id, e]));
-  await saveEvents(eventsMap);
+  save();
 
   return { success: true };
 }
