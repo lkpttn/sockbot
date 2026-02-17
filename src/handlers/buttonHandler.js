@@ -3,17 +3,21 @@ import { getEventByMessageId, createEvent } from '../managers/eventManager.js';
 import { toggleRole } from '../managers/signupManager.js';
 import { buildEventEmbed, buildEventButtons } from '../managers/embedManager.js';
 import { scheduleEventReminder, scheduleEventCleanup } from '../schedulers/eventScheduler.js';
-import { TEMPLATES } from '../config.js';
+import { TEMPLATES, DEFAULT_TIMEZONE } from '../config.js';
 import { getPreview, deletePreview, hasPreview } from '../managers/previewManager.js';
 
 /**
- * Format a date for thread naming
+ * Format a date for thread naming in the event's timezone
  * @param {Date} date - The date to format
+ * @param {string} timezone - IANA timezone (e.g., 'America/New_York')
  * @returns {string} - Formatted date (e.g., "Nov 27")
  */
-function formatThreadDate(date) {
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${monthNames[date.getMonth()]} ${date.getDate()}`;
+function formatThreadDate(date, timezone = DEFAULT_TIMEZONE) {
+  return date.toLocaleDateString('en-US', {
+    timeZone: timezone,
+    month: 'short',
+    day: 'numeric'
+  });
 }
 
 export async function handleRoleButton(interaction) {
@@ -98,8 +102,7 @@ export async function handlePreviewAccept(interaction) {
 
   // Create a thread attached to the event message
   try {
-    const eventDate = new Date(event.startTime);
-    const formattedDate = formatThreadDate(eventDate);
+    const formattedDate = formatThreadDate(event.startTime, event.timezone);
     const threadName = `${event.title} - ${formattedDate}`;
 
     const thread = await message.startThread({

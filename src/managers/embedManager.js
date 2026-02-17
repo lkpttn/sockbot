@@ -83,7 +83,7 @@ export function buildEventButtons(event) {
     // Get emoji ID for the role
     // Custom emoji format: <:name:id> or <a:name:id>
     const emojiString = ROLE_EMOJIS[roleName] || DEFAULT_ROLE_EMOJI;
-    const emojiMatch = emojiString.match(/<a?:(\w+):(\d+)>/);
+    const emojiMatch = emojiString?.match(/<a?:(\w+):(\d+)>/);
 
     // Get style for the role (custom roles use Secondary)
     const style = roleStyles[roleName] || ButtonStyle.Secondary;

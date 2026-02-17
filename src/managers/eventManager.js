@@ -21,6 +21,7 @@ export function buildEventObject({
   description,
   startTime,
   duration,
+  timezone,
   customRoles = []
 }) {
   const id = uuidv4();
@@ -42,6 +43,7 @@ export function buildEventObject({
     description: description || null,
     startTime,
     duration,
+    timezone, // IANA timezone used when creating the event
     capacity: templateConfig.capacity,
     roles,
     signups: [], // Array of {userId, roles: string[], timestamp}
@@ -93,4 +95,9 @@ export function updateEvent(id, updates) {
   Object.assign(event, updates);
   saveEvents(events);
   return event;
+}
+
+// Save the current in-memory events to disk
+export function save() {
+  saveEvents(events);
 }

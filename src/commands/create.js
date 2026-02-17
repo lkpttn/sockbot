@@ -1,9 +1,9 @@
 import { SlashCommandBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { TEMPLATES } from '../config.js';
+import { TEMPLATES, DEFAULT_TIMEZONE } from '../config.js';
 import { buildEventObject } from '../managers/eventManager.js';
 import { buildEventEmbed, buildEventButtons } from '../managers/embedManager.js';
 import { storePreview, cleanupExpiredPreviews } from '../managers/previewManager.js';
-import { parseTimeWithTimezoneFix, validateEventDate } from '../dateParser.js';
+import { extractTimezone, parseEventTime, validateEventDate } from '../dateParser.js';
 
 /**
  * Helper to build a subcommand with consistent options
@@ -18,7 +18,8 @@ function buildEventSubcommand(name, description) {
       .setDescription(description)
       .addStringOption(option =>
         option.setName('title')
-          .setDescription('Event title')
+          .setDescription('Event title (max 256 characters)')
+          .setMaxLength(256)
           .setRequired(true))
       .addStringOption(option =>
         option.setName('start')
@@ -26,7 +27,8 @@ function buildEventSubcommand(name, description) {
           .setRequired(true))
       .addStringOption(option =>
         option.setName('description')
-          .setDescription('Event description')
+          .setDescription('Event description (max 1024 characters)')
+          .setMaxLength(1024)
           .setRequired(false))
       .addIntegerOption(option =>
         option.setName('duration')
@@ -60,19 +62,30 @@ export const createCommand = {
     const duration = interaction.options.getInteger('duration');
     const customRolesString = interaction.options.getString('custom-roles');
 
-    // Parse the start time with timezone-aware fixing
-    const parsedDate = parseTimeWithTimezoneFix(startString);
+    // Additional validation for title length (Discord's setMaxLength should handle this, but being safe)
+    if (title.length > 256) {
+      return interaction.editReply({
+        content: `Event title is too long (${title.length}/256 characters). Please shorten it by ${title.length - 256} characters.`
+      });
+    }
+
+    // Validate description length if provided
+    if (description && description.length > 1024) {
+      return interaction.editReply({
+        content: `Event description is too long (${description.length}/1024 characters). Please shorten it by ${description.length - 1024} characters.`
+      });
+    }
+
+    // Extract timezone from input, fall back to guild default
+    const tz = extractTimezone(startString);
+    const ianaTimezone = tz?.iana ?? DEFAULT_TIMEZONE;
+
+    // Parse the start time with timezone-aware reference
+    const parsedDate = parseEventTime(startString, ianaTimezone);
 
     if (!parsedDate) {
-      // Check if timezone is missing
-      if (!/\b(UTC|GMT|EST|EDT|CST|CDT|MST|MDT|PST|PDT)\b/i.test(startString)) {
-        return interaction.editReply({
-          content: `Please include a timezone in your start time (e.g., "4pm EST", "tomorrow 8pm PST").`
-        });
-      }
-
       return interaction.editReply({
-        content: `Could not parse start time: "${startString}".\nTry formats like:\n- "reset", "reset+2"\n- "today 4pm EST", "tomorrow 8pm PST"\n- "Wednesday 8pm EST", "4pm EST"`
+        content: `Could not parse start time: "${startString}".\nTry formats like:\n- "reset", "reset+2"\n- "today 4pm EST", "tomorrow 8pm PST"\n- "Wednesday 8pm EST", "4pm EST"\n- "8pm" (defaults to ${DEFAULT_TIMEZONE})`
       });
     }
 
@@ -101,6 +114,7 @@ export const createCommand = {
       description,
       startTime: parsedDate,
       duration: duration || TEMPLATES[subcommand].duration,
+      timezone: ianaTimezone,
       customRoles
     });
 

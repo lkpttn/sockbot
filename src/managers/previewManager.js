@@ -34,12 +34,20 @@ export function deletePreview(previewId) {
 }
 
 /**
- * Check if a preview exists and is valid
+ * Check if a preview exists and hasn't expired
  * @param {string} previewId - Preview ID to check
  * @returns {boolean} - True if preview exists and hasn't expired
  */
 export function hasPreview(previewId) {
-  return pendingPreviews.has(previewId);
+  const preview = pendingPreviews.get(previewId);
+  if (!preview) return false;
+
+  if (Date.now() - preview.createdAt > PREVIEW_TIMEOUT_MS) {
+    pendingPreviews.delete(previewId);
+    return false;
+  }
+
+  return true;
 }
 
 /**

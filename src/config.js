@@ -4,35 +4,35 @@ export const TEMPLATES = {
     capacity: 5,
     duration: 120,
     roles: ['Any', 'DPS', 'Boon DPS', 'Healer', 'Glut'],
-    mentionRole: '1365144192149487768' // Fractals role ID
+    mentionRole: process.env.ROLE_ID_FRACTALS
   },
   raid: {
     name: 'Raid',
     capacity: 10,
     duration: 120,
     roles: ['Any', 'DPS', 'Boon DPS', 'Healer', 'Tank', 'Kite'],
-    mentionRole: '1364345501813833728' // Raids role ID
+    mentionRole: process.env.ROLE_ID_RAIDS
   },
   party: {
     name: 'Party',
     capacity: 5,
     duration: 90,
     roles: ['Any', 'DPS', 'Boon DPS', 'Healer'],
-    mentionRole: '1391807927358193674' // Content role ID
+    mentionRole: process.env.ROLE_ID_CONTENT
   },
   squad: {
     name: 'Squad',
     capacity: 10,
     duration: 90,
     roles: ['Any', 'DPS', 'Boon DPS', 'Healer'],
-    mentionRole: '1391807927358193674' // Content role ID
+    mentionRole: process.env.ROLE_ID_CONTENT
   },
   freeform: {
     name: 'Freeform',
     capacity: 20,
     duration: 60,
     roles: ['Any', 'DPS', 'Boon DPS', 'Healer'],
-    mentionRole: '1391807927358193674' // Content role ID
+    mentionRole: process.env.ROLE_ID_CONTENT
   }
 };
 
@@ -43,21 +43,21 @@ export const REMINDER_TIME_MINUTES = 15;
 export const DEFAULT_TIMEZONE = 'America/New_York';
 
 // Role emoji mapping
-// To get emoji IDs: Right-click emoji in Discord → "Copy Link" → ID is in the URL
+// Configure emoji strings in .env file
 // Format: '<:emoji_name:emoji_id>' for static, '<a:emoji_name:emoji_id>' for animated
 export const ROLE_EMOJIS = {
-  'Any': '<:flex:1443297786580963440>',
-  'DPS': '<:dps:1443359897919029351>',
-  'Boon DPS': '<:boondps:1444656305553018990>',
-  'Healer': '<:heal:1444658585769476197>',
-  'Tank': '<:tank:1443360014516621444>',
-  'Kite': '<:special:1444658160068595945>', // TODO: Add custom emoji for Kite
-  'Glut': '<:special:1444658160068595945>', // TODO: Add custom emoji for Glut
-  'Special': '<:special:1444658160068595945>'
+  'Any': process.env.EMOJI_ANY,
+  'DPS': process.env.EMOJI_DPS,
+  'Boon DPS': process.env.EMOJI_BOON_DPS,
+  'Healer': process.env.EMOJI_HEALER,
+  'Tank': process.env.EMOJI_TANK,
+  'Kite': process.env.EMOJI_KITE,
+  'Glut': process.env.EMOJI_GLUT,
+  'Special': process.env.EMOJI_SPECIAL
 };
 
 // Default emoji for custom roles not in ROLE_EMOJIS
-export const DEFAULT_ROLE_EMOJI = '<:special:1444658160068595945>';
+export const DEFAULT_ROLE_EMOJI = process.env.EMOJI_DEFAULT;
 
 // Role display order (for sorting)
 export const ROLE_ORDER = ['Any', 'DPS', 'Boon DPS', 'Healer', 'Tank', 'Kite', 'Glut', 'Special'];

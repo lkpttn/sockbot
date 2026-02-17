@@ -31,3 +31,23 @@ When invoking `/create` a user chooses a template, name and start time - and can
  A thread is created for each event for additional discussion. Accepted users are automatically added to the thread, and removed from the thread if they remove their signup.
 
  Events are cleaned up 2 hours after their start date, deleting the message and accompanying thread. Events are stored in an `events.json` file and dynamically saved and loaded by the bot when users act or the bot is reloaded.
+
+### Bot Permissions
+
+**OAuth2 Scopes:** `bot`, `applications.commands`
+
+**Required Bot Permissions:**
+
+| Permission | Why |
+|---|---|
+| View Channels | Basic channel access |
+| Send Messages | Posting events to channels |
+| Send Messages in Threads | Sending reminders in event threads |
+| Create Public Threads | Creating discussion threads for events |
+| Manage Threads | Adding/removing signups from threads, deleting threads on cleanup |
+| Manage Messages | Deleting event posts and previews |
+| Read Message History | Fetching event messages for cleanup |
+| Embed Links | Rendering event embeds |
+| Mention Everyone | Pinging roles on event post (not needed if roles are set as mentionable) |
+
+**Permissions integer:** `397284550656`

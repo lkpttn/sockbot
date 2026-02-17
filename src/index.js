@@ -1,11 +1,9 @@
+import 'dotenv/config';
 import { Client, GatewayIntentBits, REST, Routes, MessageFlags } from 'discord.js';
-import { config } from 'dotenv';
 import { createCommand } from './commands/create.js';
 import { handleRoleButton, handlePreviewAccept, handlePreviewDelete } from './handlers/buttonHandler.js';
-import { initializeEventManager, getAllEvents, deleteMultipleEvents } from './managers/eventManager.js';
+import { initializeEventManager, getAllEvents } from './managers/eventManager.js';
 import { scheduleEventReminder, scheduleEventCleanup, shouldCleanupEvent } from './schedulers/eventScheduler.js';
-
-config();
 
 const client = new Client({
   intents: [
@@ -48,15 +46,14 @@ client.once('clientReady', async () => {
   let cleanedUpCount = 0;
   let restoredCount = 0;
   let skippedCount = 0;
-  const eventsToCleanup = [];
+
+  const now = new Date();
 
   for (const event of events) {
-    const now = new Date();
-
-    // Check if event should have been cleaned up already
     if (shouldCleanupEvent(event)) {
+      // Past cleanup window - clean up immediately (deletes Discord messages + storage)
       console.log(`Cleaning up old event: ${event.title}`);
-      eventsToCleanup.push(event.id);
+      scheduleEventCleanup(event, client);
       cleanedUpCount++;
     } else if (event.startTime > now) {
       // Future event - re-schedule timers
@@ -70,11 +67,6 @@ client.once('clientReady', async () => {
       scheduleEventCleanup(event, client);
       skippedCount++;
     }
-  }
-
-  // Batch delete old events
-  if (eventsToCleanup.length > 0) {
-    deleteMultipleEvents(eventsToCleanup);
   }
 
   console.log(`Event restoration complete: ${restoredCount} restored, ${skippedCount} skipped, ${cleanedUpCount} cleaned up`);
