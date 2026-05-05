@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { TEMPLATES, DEFAULT_TIMEZONE } from '../config.js';
 import { buildEventObject } from '../managers/eventManager.js';
 import { buildEventEmbed, buildEventButtons } from '../managers/embedManager.js';
@@ -33,11 +33,55 @@ function buildEventSubcommand(name, description) {
       .addIntegerOption(option =>
         option.setName('duration')
           .setDescription('Duration in minutes')
+          .setMinValue(1)
+          .setMaxValue(1440)
           .setRequired(false))
       .addStringOption(option =>
         option.setName('custom-roles')
           .setDescription('Custom roles (comma-separated: "Glutbender, Kiter")')
           .setRequired(false));
+}
+
+const MAX_ROLE_BUTTONS_WITH_PREVIEW = 20;
+const MAX_CUSTOM_ROLE_LENGTH = 50;
+
+function parseCustomRoles(customRolesString, baseRoles) {
+  if (!customRolesString) {
+    return { roles: [] };
+  }
+
+  const roles = customRolesString
+    .split(',')
+    .map(role => role.trim())
+    .filter(Boolean);
+
+  const dedupedRoles = [];
+  const seenRoles = new Set(baseRoles.map(role => role.toLowerCase()));
+
+  for (const role of roles) {
+    if (role.length > MAX_CUSTOM_ROLE_LENGTH) {
+      return {
+        error: `Custom role "${role}" is too long (${role.length}/${MAX_CUSTOM_ROLE_LENGTH} characters).`
+      };
+    }
+
+    const normalizedRole = role.toLowerCase();
+    if (seenRoles.has(normalizedRole)) {
+      continue;
+    }
+
+    seenRoles.add(normalizedRole);
+    dedupedRoles.push(role);
+  }
+
+  const maxCustomRoles = MAX_ROLE_BUTTONS_WITH_PREVIEW - baseRoles.length;
+  if (dedupedRoles.length > maxCustomRoles) {
+    return {
+      error: `Too many custom roles. This template supports up to ${maxCustomRoles} custom roles.`
+    };
+  }
+
+  return { roles: dedupedRoles };
 }
 
 
@@ -97,10 +141,12 @@ export const createCommand = {
       });
     }
 
-    // Parse custom roles (now just role names, no capacity)
-    const customRoles = [];
-    if (customRolesString) {
-      customRoles.push(...customRolesString.split(',').map(s => s.trim()));
+    const templateConfig = TEMPLATES[subcommand];
+    const parsedCustomRoles = parseCustomRoles(customRolesString, templateConfig.roles);
+    if (parsedCustomRoles.error) {
+      return interaction.editReply({
+        content: parsedCustomRoles.error
+      });
     }
 
     // Build preview event (not saved yet)
@@ -113,9 +159,9 @@ export const createCommand = {
       title,
       description,
       startTime: parsedDate,
-      duration: duration || TEMPLATES[subcommand].duration,
+      duration: duration || templateConfig.duration,
       timezone: ianaTimezone,
-      customRoles
+      customRoles: parsedCustomRoles.roles
     });
 
     // Build preview embed and role buttons
