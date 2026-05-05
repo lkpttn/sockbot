@@ -30,12 +30,21 @@ test('timezone abbreviations use the intended civil timezone', () => {
   assert.equal(parse('8pm PST', summerReference), '2026-07-16T03:00:00.000Z');
 });
 
-test('reset phrases are UTC based and tomorrow reset is distinct from reset', () => {
+test('reset phrases are UTC based', () => {
   const afterResetReference = '2026-01-15T17:00:00.000Z';
 
   assert.equal(parse('reset', afterResetReference), '2026-01-16T00:00:00.000Z');
   assert.equal(parse('reset+1.5', afterResetReference), '2026-01-16T01:30:00.000Z');
-  assert.equal(parse('tomorrow reset', afterResetReference), '2026-01-17T00:00:00.000Z');
+});
+
+test('today and tomorrow reset use the selected local calendar day', () => {
+  const mondayNightEastern = '2026-01-13T03:00:00.000Z';
+  const mondayNightPacific = '2026-01-13T06:00:00.000Z';
+
+  assert.equal(parse('reset', mondayNightEastern), '2026-01-14T00:00:00.000Z');
+  assert.equal(parse('tomorrow reset', mondayNightEastern), '2026-01-14T00:00:00.000Z');
+  assert.equal(parse('tomorrow reset PST', mondayNightPacific), '2026-01-14T00:00:00.000Z');
+  assert.equal(parse('tomorrow reset+1', mondayNightEastern), '2026-01-14T01:00:00.000Z');
 });
 
 test('today remains the current local day and can still validate as past', () => {

@@ -72,6 +72,50 @@ function getTimezoneOffsetMinutes(ianaTimezone, date) {
   return Math.round((localTimeAsUtc - date.getTime()) / 60000);
 }
 
+function getLocalDateParts(date, ianaTimezone) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: ianaTimezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date);
+
+  return Object.fromEntries(
+    parts
+      .filter(part => part.type !== 'literal')
+      .map(part => [part.type, Number(part.value)])
+  );
+}
+
+function addDaysToDateParts(dateParts, days) {
+  const date = new Date(Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day + days));
+
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate()
+  };
+}
+
+function datePartsEqual(a, b) {
+  return a.year === b.year && a.month === b.month && a.day === b.day;
+}
+
+function findResetForLocalDate(dateParts, ianaTimezone) {
+  const targetUtcDate = Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day);
+
+  for (let dayOffset = -2; dayOffset <= 2; dayOffset++) {
+    const candidate = new Date(targetUtcDate + dayOffset * 24 * 60 * 60 * 1000);
+    const candidateLocalDate = getLocalDateParts(candidate, ianaTimezone);
+
+    if (datePartsEqual(candidateLocalDate, dateParts)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
 function parseWithTimezone(timeString, ianaTimezone, referenceDate) {
   const referenceOffset = getTimezoneOffsetMinutes(ianaTimezone, referenceDate);
   const firstPass = chrono.parseDate(
@@ -100,10 +144,11 @@ function parseWithTimezone(timeString, ianaTimezone, referenceDate) {
  * Parse GW2 reset time strings (00:00 UTC / midnight UTC)
  * Supports: "reset", "at reset", "reset+1", "reset +2", "tomorrow reset", etc.
  * @param {string} timeString - The time string to parse
+ * @param {string} ianaTimezone - IANA timezone for resolving today/tomorrow reset
  * @param {Date} referenceDate - The reference date (defaults to now)
  * @returns {Date|null} - Parsed date or null if not a reset time string
  */
-export function parseResetTime(timeString, referenceDate = new Date()) {
+export function parseResetTime(timeString, ianaTimezone = DEFAULT_TIMEZONE, referenceDate = new Date()) {
   const lowerStr = timeString.toLowerCase().trim();
 
   // Check if string contains "reset"
@@ -115,11 +160,26 @@ export function parseResetTime(timeString, referenceDate = new Date()) {
   const offsetMatch = lowerStr.match(/reset\s*\+?\s*(\d+(?:\.\d+)?)/);
   const offsetHours = offsetMatch ? parseFloat(offsetMatch[1]) : 0;
 
-  // Check if "tomorrow" is mentioned
-  const isTomorrow = lowerStr.includes('tomorrow');
-
-  // Use the reference date instead of current time
   const now = referenceDate;
+
+  const relativeDayMatch = lowerStr.match(/\b(today|tomorrow)\b/);
+  if (relativeDayMatch) {
+    const localDate = getLocalDateParts(now, ianaTimezone);
+    const dayOffset = relativeDayMatch[1] === 'tomorrow' ? 1 : 0;
+    const targetLocalDate = addDaysToDateParts(localDate, dayOffset);
+    const resetDate = findResetForLocalDate(targetLocalDate, ianaTimezone);
+
+    if (!resetDate) {
+      return null;
+    }
+
+    if (offsetHours > 0) {
+      resetDate.setUTCHours(resetDate.getUTCHours() + Math.floor(offsetHours));
+      resetDate.setUTCMinutes(resetDate.getUTCMinutes() + Math.round((offsetHours % 1) * 60));
+    }
+
+    return resetDate;
+  }
 
   // Calculate today's reset time first
   let resetDate = new Date(Date.UTC(
@@ -135,12 +195,6 @@ export function parseResetTime(timeString, referenceDate = new Date()) {
   // Determine the next reset after now.
   if (resetDate <= now) {
     // If today's reset has already passed, use next reset.
-    resetDate.setUTCDate(resetDate.getUTCDate() + 1);
-  }
-
-  // "tomorrow reset" means the reset after the next reset. This keeps it distinct
-  // from "reset" after today's UTC reset has already passed.
-  if (isTomorrow) {
     resetDate.setUTCDate(resetDate.getUTCDate() + 1);
   }
 
@@ -166,7 +220,7 @@ export function parseResetTime(timeString, referenceDate = new Date()) {
  */
 export function parseEventTime(timeString, ianaTimezone = DEFAULT_TIMEZONE, referenceDate = new Date()) {
   // First check if it's a reset time (always UTC-based)
-  const resetTime = parseResetTime(timeString, referenceDate);
+  const resetTime = parseResetTime(timeString, ianaTimezone, referenceDate);
   if (resetTime) return resetTime;
 
   // Chrono accepts numeric timezone offsets reliably. IANA names are resolved here
