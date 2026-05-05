@@ -16,6 +16,7 @@ const TIMEZONE_MAP = {
 };
 
 const TIMEZONE_PATTERN = /\b(UTC|GMT|EST|EDT|CST|CDT|MST|MDT|PST|PDT)\b/i;
+const RESET_HOUR_UTC = 0;
 
 /**
  * Extract timezone info from a time string
@@ -33,6 +34,68 @@ export function extractTimezone(timeString) {
   };
 }
 
+function stripTimezoneAbbreviation(timeString) {
+  return timeString.replace(TIMEZONE_PATTERN, '').replace(/\s+/g, ' ').trim();
+}
+
+function getTimezoneOffsetMinutes(ianaTimezone, date) {
+  if (ianaTimezone === 'UTC') {
+    return 0;
+  }
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: ianaTimezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(
+    parts
+      .filter(part => part.type !== 'literal')
+      .map(part => [part.type, Number(part.value)])
+  );
+
+  const localTimeAsUtc = Date.UTC(
+    values.year,
+    values.month - 1,
+    values.day,
+    values.hour,
+    values.minute,
+    values.second
+  );
+
+  return Math.round((localTimeAsUtc - date.getTime()) / 60000);
+}
+
+function parseWithTimezone(timeString, ianaTimezone, referenceDate) {
+  const referenceOffset = getTimezoneOffsetMinutes(ianaTimezone, referenceDate);
+  const firstPass = chrono.parseDate(
+    timeString,
+    { instant: referenceDate, timezone: referenceOffset },
+    { forwardDate: true }
+  );
+
+  if (!firstPass) {
+    return null;
+  }
+
+  const eventOffset = getTimezoneOffsetMinutes(ianaTimezone, firstPass);
+  if (eventOffset === referenceOffset) {
+    return firstPass;
+  }
+
+  return chrono.parseDate(
+    timeString,
+    { instant: referenceDate, timezone: eventOffset },
+    { forwardDate: true }
+  );
+}
+
 /**
  * Parse GW2 reset time strings (00:00 UTC / midnight UTC)
  * Supports: "reset", "at reset", "reset+1", "reset +2", "tomorrow reset", etc.
@@ -47,9 +110,6 @@ export function parseResetTime(timeString, referenceDate = new Date()) {
   if (!lowerStr.includes('reset')) {
     return null;
   }
-
-  // GW2 reset is at 00:00 UTC (midnight UTC)
-  const RESET_HOUR_UTC = 0;
 
   // Extract offset if present (e.g., "reset+2" or "reset +2")
   const offsetMatch = lowerStr.match(/reset\s*\+?\s*(\d+(?:\.\d+)?)/);
@@ -72,13 +132,15 @@ export function parseResetTime(timeString, referenceDate = new Date()) {
     0
   ));
 
-  // Determine which reset to use
-  if (isTomorrow) {
-    // "tomorrow reset" means the reset on tomorrow's date
-    // Always add 1 day to get tomorrow's reset
+  // Determine the next reset after now.
+  if (resetDate <= now) {
+    // If today's reset has already passed, use next reset.
     resetDate.setUTCDate(resetDate.getUTCDate() + 1);
-  } else if (resetDate <= now) {
-    // If today's reset has already passed and not "tomorrow", use next reset
+  }
+
+  // "tomorrow reset" means the reset after the next reset. This keeps it distinct
+  // from "reset" after today's UTC reset has already passed.
+  if (isTomorrow) {
     resetDate.setUTCDate(resetDate.getUTCDate() + 1);
   }
 
@@ -107,9 +169,10 @@ export function parseEventTime(timeString, ianaTimezone = DEFAULT_TIMEZONE, refe
   const resetTime = parseResetTime(timeString, referenceDate);
   if (resetTime) return resetTime;
 
-  // Use chrono with timezone-aware reference so relative date words
-  // ("today", "tomorrow", "Friday", etc.) resolve in the user's timezone
-  return chrono.parseDate(timeString, { instant: referenceDate, timezone: ianaTimezone });
+  // Chrono accepts numeric timezone offsets reliably. IANA names are resolved here
+  // so parsing behaves the same locally and inside UTC Docker containers.
+  const parseString = stripTimezoneAbbreviation(timeString);
+  return parseWithTimezone(parseString, ianaTimezone, referenceDate);
 }
 
 /**

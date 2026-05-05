@@ -68,6 +68,13 @@ export async function handlePreviewAccept(interaction) {
 
   const { event, interaction: storedInteraction } = getPreview(previewId);
 
+  if (interaction.user.id !== storedInteraction.userId) {
+    return interaction.reply({
+      content: 'Only the creator can accept this preview.',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
   // Remove from pending previews
   deletePreview(previewId);
 
@@ -94,7 +101,7 @@ export async function handlePreviewAccept(interaction) {
     content,
     embeds: [embed],
     components: buttons,
-    allowedMentions: { roles: [template.mentionRole] }
+    allowedMentions: template.mentionRole ? { roles: [template.mentionRole] } : { parse: [] }
   });
 
   // Store message ID and save event to disk
@@ -134,6 +141,17 @@ export async function handlePreviewAccept(interaction) {
 export async function handlePreviewDelete(interaction) {
   // Parse preview ID from custom ID: preview_delete_{timestamp}_{userId}
   const previewId = interaction.customId.replace('preview_delete_', '');
+
+  if (hasPreview(previewId)) {
+    const { interaction: storedInteraction } = getPreview(previewId);
+
+    if (interaction.user.id !== storedInteraction.userId) {
+      return interaction.reply({
+        content: 'Only the creator can delete this preview.',
+        flags: MessageFlags.Ephemeral
+      });
+    }
+  }
 
   // Remove from pending previews if it exists
   deletePreview(previewId);
