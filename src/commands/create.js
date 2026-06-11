@@ -25,6 +25,10 @@ function buildEventSubcommand(name, description) {
         option.setName('start')
           .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
           .setRequired(true))
+      .addRoleOption(option =>
+        option.setName('mention')
+          .setDescription('Role to ping when posted (defaults to this event type\'s role)')
+          .setRequired(false))
       .addStringOption(option =>
         option.setName('description')
           .setDescription('Event description (max 1024 characters)')
@@ -105,6 +109,7 @@ export const createCommand = {
     const description = interaction.options.getString('description');
     const duration = interaction.options.getInteger('duration');
     const customRolesString = interaction.options.getString('custom-roles');
+    const mentionRoleId = interaction.options.getRole('mention')?.id ?? null;
 
     // Additional validation for title length (Discord's setMaxLength should handle this, but being safe)
     if (title.length > 256) {
@@ -161,7 +166,8 @@ export const createCommand = {
       startTime: parsedDate,
       duration: duration || templateConfig.duration,
       timezone: ianaTimezone,
-      customRoles: parsedCustomRoles.roles
+      customRoles: parsedCustomRoles.roles,
+      mentionRoleId
     });
 
     // Build preview embed and role buttons
@@ -196,11 +202,17 @@ export const createCommand = {
     // Clean up old expired previews
     cleanupExpiredPreviews();
 
+    // Show the role that will be pinged (override or template default) so the
+    // creator can confirm it in the preview. Suppress the actual ping here.
+    const pingRoleId = event.mentionRoleId ?? templateConfig.mentionRole;
+    const pingLine = pingRoleId ? `\nWill notify: <@&${pingRoleId}>` : '';
+
     // Send preview with both role buttons and accept/delete buttons
     await interaction.editReply({
-      content: '**Preview:** Review your event before posting it.',
+      content: `**Preview:** Review your event before posting it.${pingLine}`,
       embeds: [embed],
-      components: [...roleButtons, previewButtons]
+      components: [...roleButtons, previewButtons],
+      allowedMentions: { parse: [] }
     });
   }
 };

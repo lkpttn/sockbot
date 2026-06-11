@@ -92,16 +92,17 @@ export async function handlePreviewAccept(interaction) {
   const embed = buildEventEmbed(event, interaction.member || interaction.user);
   const buttons = buildEventButtons(event);
 
-  // Build content with role mention if configured
+  // Build content with role mention: per-event override, else template default
   const template = TEMPLATES[event.template];
-  const content = template.mentionRole ? `<@&${template.mentionRole}>` : undefined;
+  const mentionRoleId = event.mentionRoleId ?? template.mentionRole;
+  const content = mentionRoleId ? `<@&${mentionRoleId}>` : undefined;
 
   // Post the real event message
   const message = await channel.send({
     content,
     embeds: [embed],
     components: buttons,
-    allowedMentions: template.mentionRole ? { roles: [template.mentionRole] } : { parse: [] }
+    allowedMentions: mentionRoleId ? { roles: [mentionRoleId] } : { parse: [] }
   });
 
   // Store message ID and save event to disk

@@ -22,7 +22,8 @@ export function buildEventObject({
   startTime,
   duration,
   timezone,
-  customRoles = []
+  customRoles = [],
+  mentionRoleId = null
 }) {
   const id = uuidv4();
   const templateConfig = TEMPLATES[template];
@@ -44,6 +45,7 @@ export function buildEventObject({
     startTime,
     duration,
     timezone, // IANA timezone used when creating the event
+    mentionRoleId, // Optional per-event ping override; falls back to template default at post time
     capacity: templateConfig.capacity,
     roles,
     signups: [], // Array of {userId, roles: string[], timestamp}
