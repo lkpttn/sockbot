@@ -99,7 +99,8 @@ export function updateEvent(id, updates) {
   return event;
 }
 
-// Save the current in-memory events to disk
+// Save the current in-memory events to disk. Returns the write promise so
+// callers (e.g. graceful shutdown) can await durability if they need to.
 export function save() {
-  saveEvents(events);
+  return saveEvents(events);
 }

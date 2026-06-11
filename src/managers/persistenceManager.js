@@ -8,6 +8,12 @@ const __dirname = path.dirname(__filename);
 // Use data directory in project root (will be mounted as volume in Docker)
 const DATA_DIR = path.join(__dirname, '../../data');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
+const TMP_FILE = `${EVENTS_FILE}.tmp`;
+
+// Serializes all writes so overlapping saves can't interleave and corrupt the
+// file. Each save() chains onto this; the chain never rejects (errors are
+// logged) so one failed write doesn't poison later ones.
+let writeChain = Promise.resolve();
 
 // Ensure data directory exists
 async function ensureDataDir() {
@@ -18,11 +24,12 @@ async function ensureDataDir() {
   }
 }
 
-export async function saveEvents(eventsMap) {
+export function saveEvents(eventsMap) {
+  // Snapshot + serialize synchronously so we capture the state at call time,
+  // even if the map is mutated before this write reaches the front of the queue.
+  let json;
+  let count;
   try {
-    await ensureDataDir();
-
-    // Convert Map to array of events, serializing dates as ISO strings
     const eventsArray = Array.from(eventsMap.values()).map(event => ({
       ...event,
       startTime: event.startTime.toISOString(),
@@ -35,12 +42,27 @@ export async function saveEvents(eventsMap) {
         timestamp: signup.timestamp.toISOString()
       }))
     }));
-
-    await fs.writeFile(EVENTS_FILE, JSON.stringify(eventsArray, null, 2), 'utf-8');
-    console.log(`Saved ${eventsArray.length} events to disk`);
+    count = eventsArray.length;
+    json = JSON.stringify(eventsArray, null, 2);
   } catch (error) {
-    console.error('Failed to save events:', error);
+    console.error('Failed to serialize events:', error);
+    return writeChain;
   }
+
+  // Write atomically: write to a temp file, then rename over the target. rename
+  // is atomic on POSIX, so a crash mid-write leaves the previous file intact.
+  writeChain = writeChain.then(async () => {
+    try {
+      await ensureDataDir();
+      await fs.writeFile(TMP_FILE, json, 'utf-8');
+      await fs.rename(TMP_FILE, EVENTS_FILE);
+      console.log(`Saved ${count} events to disk`);
+    } catch (error) {
+      console.error('Failed to save events:', error);
+    }
+  });
+
+  return writeChain;
 }
 
 export async function loadEvents() {
