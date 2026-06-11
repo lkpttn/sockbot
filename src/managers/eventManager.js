@@ -22,14 +22,14 @@ export function buildEventObject({
   startTime,
   duration,
   timezone,
-  customRoles = [],
+  extraRoles = [],
   mentionRoleId = null
 }) {
   const id = uuidv4();
   const templateConfig = TEMPLATES[template];
 
-  // Build available roles list (base roles + custom roles)
-  const roles = [...templateConfig.roles, ...customRoles];
+  // Build available roles list (base roles + template toggle roles)
+  const roles = [...templateConfig.roles, ...extraRoles];
 
   const event = {
     id,

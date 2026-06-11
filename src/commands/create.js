@@ -12,7 +12,7 @@ import { extractTimezone, parseEventTime, validateEventDate } from '../dateParse
  * @returns {Function} - Subcommand builder function
  */
 function buildEventSubcommand(name, description) {
-  return (subcommand) =>
+  return (subcommand) => {
     subcommand
       .setName(name)
       .setDescription(description)
@@ -21,14 +21,25 @@ function buildEventSubcommand(name, description) {
           .setDescription('Event title (max 256 characters)')
           .setMaxLength(256)
           .setRequired(true))
+      .addRoleOption(option =>
+        option.setName('mention')
+          .setDescription('Role to ping when the event is posted')
+          .setRequired(true))
       .addStringOption(option =>
         option.setName('start')
           .setDescription('Start time (e.g., "reset", "4pm EST", "Wednesday 8pm EST", "tomorrow 9pm PST")')
-          .setRequired(true))
-      .addRoleOption(option =>
-        option.setName('mention')
-          .setDescription('Role to ping when posted (defaults to this event type\'s role)')
-          .setRequired(false))
+          .setRequired(true));
+
+    // Add this template's required Yes/No toggle-role fields (e.g. squad's Kite).
+    // These must come before the optional fields below (Discord requires required-first).
+    for (const toggle of TEMPLATES[name].toggleRoles ?? []) {
+      subcommand.addBooleanOption(option =>
+        option.setName(toggle.option)
+          .setDescription(toggle.description)
+          .setRequired(true));
+    }
+
+    subcommand
       .addStringOption(option =>
         option.setName('description')
           .setDescription('Event description (max 1024 characters)')
@@ -39,63 +50,17 @@ function buildEventSubcommand(name, description) {
           .setDescription('Duration in minutes')
           .setMinValue(1)
           .setMaxValue(1440)
-          .setRequired(false))
-      .addStringOption(option =>
-        option.setName('custom-roles')
-          .setDescription('Custom roles (comma-separated: "Glutbender, Kiter")')
           .setRequired(false));
+
+    return subcommand;
+  };
 }
-
-const MAX_ROLE_BUTTONS_WITH_PREVIEW = 20;
-const MAX_CUSTOM_ROLE_LENGTH = 50;
-
-function parseCustomRoles(customRolesString, baseRoles) {
-  if (!customRolesString) {
-    return { roles: [] };
-  }
-
-  const roles = customRolesString
-    .split(',')
-    .map(role => role.trim())
-    .filter(Boolean);
-
-  const dedupedRoles = [];
-  const seenRoles = new Set(baseRoles.map(role => role.toLowerCase()));
-
-  for (const role of roles) {
-    if (role.length > MAX_CUSTOM_ROLE_LENGTH) {
-      return {
-        error: `Custom role "${role}" is too long (${role.length}/${MAX_CUSTOM_ROLE_LENGTH} characters).`
-      };
-    }
-
-    const normalizedRole = role.toLowerCase();
-    if (seenRoles.has(normalizedRole)) {
-      continue;
-    }
-
-    seenRoles.add(normalizedRole);
-    dedupedRoles.push(role);
-  }
-
-  const maxCustomRoles = MAX_ROLE_BUTTONS_WITH_PREVIEW - baseRoles.length;
-  if (dedupedRoles.length > maxCustomRoles) {
-    return {
-      error: `Too many custom roles. This template supports up to ${maxCustomRoles} custom roles.`
-    };
-  }
-
-  return { roles: dedupedRoles };
-}
-
 
 export const createCommand = {
   data: new SlashCommandBuilder()
     .setName('create')
     .setDescription('Create a new event')
-    .addSubcommand(buildEventSubcommand('fractal', 'Create a Fractal event'))
     .addSubcommand(buildEventSubcommand('party', 'Create a Party event'))
-    .addSubcommand(buildEventSubcommand('raid', 'Create a Raid event'))
     .addSubcommand(buildEventSubcommand('squad', 'Create a Squad event'))
     .addSubcommand(buildEventSubcommand('freeform', 'Create a Freeform event')),
 
@@ -108,8 +73,7 @@ export const createCommand = {
     const startString = interaction.options.getString('start');
     const description = interaction.options.getString('description');
     const duration = interaction.options.getInteger('duration');
-    const customRolesString = interaction.options.getString('custom-roles');
-    const mentionRoleId = interaction.options.getRole('mention')?.id ?? null;
+    const mentionRoleId = interaction.options.getRole('mention').id;
 
     // Additional validation for title length (Discord's setMaxLength should handle this, but being safe)
     if (title.length > 256) {
@@ -147,12 +111,11 @@ export const createCommand = {
     }
 
     const templateConfig = TEMPLATES[subcommand];
-    const parsedCustomRoles = parseCustomRoles(customRolesString, templateConfig.roles);
-    if (parsedCustomRoles.error) {
-      return interaction.editReply({
-        content: parsedCustomRoles.error
-      });
-    }
+
+    // Apply this template's toggle-role fields (e.g. squad's Kite): each Yes adds its role.
+    const toggledRoles = (templateConfig.toggleRoles ?? [])
+      .filter(toggle => interaction.options.getBoolean(toggle.option))
+      .map(toggle => toggle.role);
 
     // Build preview event (not saved yet)
     const event = buildEventObject({
@@ -166,7 +129,7 @@ export const createCommand = {
       startTime: parsedDate,
       duration: duration || templateConfig.duration,
       timezone: ianaTimezone,
-      customRoles: parsedCustomRoles.roles,
+      extraRoles: toggledRoles,
       mentionRoleId
     });
 
@@ -202,14 +165,11 @@ export const createCommand = {
     // Clean up old expired previews
     cleanupExpiredPreviews();
 
-    // Show the role that will be pinged (override or template default) so the
-    // creator can confirm it in the preview. Suppress the actual ping here.
-    const pingRoleId = event.mentionRoleId ?? templateConfig.mentionRole;
-    const pingLine = pingRoleId ? `\nWill notify: <@&${pingRoleId}>` : '';
-
+    // Show the role that will be pinged so the creator can confirm it in the
+    // preview. Suppress the actual ping here.
     // Send preview with both role buttons and accept/delete buttons
     await interaction.editReply({
-      content: `**Preview:** Review your event before posting it.${pingLine}`,
+      content: `**Preview:** Review your event before posting it.\nWill notify: <@&${event.mentionRoleId}>`,
       embeds: [embed],
       components: [...roleButtons, previewButtons],
       allowedMentions: { parse: [] }
