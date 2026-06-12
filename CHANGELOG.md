@@ -11,7 +11,7 @@ Event creation gets more flexible ping targeting and a cleaner, more structured 
 
 ### Added
 - Per-event ping role: `/create` now has a required `mention` field to pick exactly which role gets pinged when the event posts (e.g. `@raids`, `@static`, `@crushers`). The preview shows who will be notified before you commit, without pinging them.
-- Per-template role toggles — required Yes/No fields that add a special role when selected: `squad` → Kite, `party` → Glut.
+- Per-template role toggles — required Yes/No fields that add special role(s) when selected: `squad` → Raid roles (Kite and Tank), `party` → Glut.
 
 ### Changed
 - Streamlined event types to three, with clearer capacities: Party (5), Squad (10), Freeform (20).

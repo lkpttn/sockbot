@@ -112,10 +112,10 @@ export const createCommand = {
 
     const templateConfig = TEMPLATES[subcommand];
 
-    // Apply this template's toggle-role fields (e.g. squad's Kite): each Yes adds its role.
+    // Apply this template's toggle-role fields (e.g. squad's Raid roles): each Yes adds its role(s).
     const toggledRoles = (templateConfig.toggleRoles ?? [])
       .filter(toggle => interaction.options.getBoolean(toggle.option))
-      .map(toggle => toggle.role);
+      .flatMap(toggle => toggle.roles);
 
     // Build preview event (not saved yet)
     const event = buildEventObject({

@@ -9,7 +9,7 @@ export const TEMPLATES = {
     duration: 90,
     roles: ['Any', 'DPS', 'Boon DPS', 'Healer'],
     toggleRoles: [
-      { option: 'glut', description: 'Include a Glut role', role: 'Glut' }
+      { option: 'glut', description: 'Include a Glut role', roles: ['Glut'] }
     ]
   },
   squad: {
@@ -18,7 +18,7 @@ export const TEMPLATES = {
     duration: 90,
     roles: ['Any', 'DPS', 'Boon DPS', 'Healer'],
     toggleRoles: [
-      { option: 'kite', description: 'Include a Kite role', role: 'Kite' }
+      { option: 'raid-roles', description: 'Include Raid roles (Kite and Tank)', roles: ['Kite', 'Tank'] }
     ]
   },
   freeform: {
