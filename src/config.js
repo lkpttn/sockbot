@@ -1,38 +1,31 @@
+// Each template defines an event type. `toggleRoles` declares optional Yes/No
+// fields specific to that template: when set to Yes, the named role is added to
+// the event's roles (and gets its own signup button). Add per-template fields
+// here and they're wired into the slash command automatically.
 export const TEMPLATES = {
-  fractal: {
-    name: 'Fractal',
-    capacity: 5,
-    duration: 120,
-    roles: ['Any', 'DPS', 'Boon DPS', 'Healer', 'Glut'],
-    mentionRole: process.env.ROLE_ID_FRACTALS
-  },
-  raid: {
-    name: 'Raid',
-    capacity: 10,
-    duration: 120,
-    roles: ['Any', 'DPS', 'Boon DPS', 'Healer', 'Tank', 'Kite'],
-    mentionRole: process.env.ROLE_ID_RAIDS
-  },
   party: {
     name: 'Party',
     capacity: 5,
     duration: 90,
     roles: ['Any', 'DPS', 'Boon DPS', 'Healer'],
-    mentionRole: process.env.ROLE_ID_CONTENT
+    toggleRoles: [
+      { option: 'glut', description: 'Include a Glut role', roles: ['Glut'] }
+    ]
   },
   squad: {
     name: 'Squad',
     capacity: 10,
     duration: 90,
     roles: ['Any', 'DPS', 'Boon DPS', 'Healer'],
-    mentionRole: process.env.ROLE_ID_CONTENT
+    toggleRoles: [
+      { option: 'raid-roles', description: 'Include Raid roles (Kite and Tank)', roles: ['Kite', 'Tank'] }
+    ]
   },
   freeform: {
     name: 'Freeform',
     capacity: 20,
     duration: 60,
-    roles: ['Any', 'DPS', 'Boon DPS', 'Healer'],
-    mentionRole: process.env.ROLE_ID_CONTENT
+    roles: ['Any', 'DPS', 'Boon DPS', 'Healer']
   }
 };
 

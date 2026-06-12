@@ -3,7 +3,7 @@ import { getEventByMessageId, createEvent } from '../managers/eventManager.js';
 import { toggleRole } from '../managers/signupManager.js';
 import { buildEventEmbed, buildEventButtons } from '../managers/embedManager.js';
 import { scheduleEventReminder, scheduleEventCleanup } from '../schedulers/eventScheduler.js';
-import { TEMPLATES, DEFAULT_TIMEZONE } from '../config.js';
+import { DEFAULT_TIMEZONE } from '../config.js';
 import { getPreview, deletePreview, hasPreview } from '../managers/previewManager.js';
 
 /**
@@ -92,16 +92,16 @@ export async function handlePreviewAccept(interaction) {
   const embed = buildEventEmbed(event, interaction.member || interaction.user);
   const buttons = buildEventButtons(event);
 
-  // Build content with role mention if configured
-  const template = TEMPLATES[event.template];
-  const content = template.mentionRole ? `<@&${template.mentionRole}>` : undefined;
+  // Build content with the required role mention
+  const mentionRoleId = event.mentionRoleId;
+  const content = mentionRoleId ? `<@&${mentionRoleId}>` : undefined;
 
   // Post the real event message
   const message = await channel.send({
     content,
     embeds: [embed],
     components: buttons,
-    allowedMentions: template.mentionRole ? { roles: [template.mentionRole] } : { parse: [] }
+    allowedMentions: mentionRoleId ? { roles: [mentionRoleId] } : { parse: [] }
   });
 
   // Store message ID and save event to disk

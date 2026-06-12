@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits, REST, Routes, MessageFlags } from 'discord.js';
-import { createCommand } from './commands/create.js';
+import { commands } from './commands/index.js';
 import { handleRoleButton, handlePreviewAccept, handlePreviewDelete } from './handlers/buttonHandler.js';
 import { initializeEventManager, getAllEvents } from './managers/eventManager.js';
 import { scheduleEventReminder, scheduleEventCleanup, shouldCleanupEvent } from './schedulers/eventScheduler.js';
@@ -12,8 +12,9 @@ const client = new Client({
   ]
 });
 
-// Register slash commands
-const commands = [createCommand.data.toJSON()];
+// Build a name -> command lookup for dispatch, and the JSON payload for registration.
+const commandMap = new Map(commands.map(command => [command.data.name, command]));
+const commandData = commands.map(command => command.data.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
@@ -23,7 +24,7 @@ async function registerCommands() {
 
     await rest.put(
       Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-      { body: commands }
+      { body: commandData }
     );
 
     console.log('Successfully reloaded application (/) commands.');
@@ -75,8 +76,9 @@ client.once('clientReady', async () => {
 client.on('interactionCreate', async (interaction) => {
   try {
     if (interaction.isChatInputCommand()) {
-      if (interaction.commandName === 'create') {
-        await createCommand.execute(interaction);
+      const command = commandMap.get(interaction.commandName);
+      if (command) {
+        await command.execute(interaction);
       }
     } else if (interaction.isButton()) {
       if (interaction.customId.startsWith('role_')) {

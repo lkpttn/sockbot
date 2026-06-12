@@ -22,13 +22,14 @@ export function buildEventObject({
   startTime,
   duration,
   timezone,
-  customRoles = []
+  extraRoles = [],
+  mentionRoleId = null
 }) {
   const id = uuidv4();
   const templateConfig = TEMPLATES[template];
 
-  // Build available roles list (base roles + custom roles)
-  const roles = [...templateConfig.roles, ...customRoles];
+  // Build available roles list (base roles + template toggle roles)
+  const roles = [...templateConfig.roles, ...extraRoles];
 
   const event = {
     id,
@@ -44,6 +45,7 @@ export function buildEventObject({
     startTime,
     duration,
     timezone, // IANA timezone used when creating the event
+    mentionRoleId, // Optional per-event ping override; falls back to template default at post time
     capacity: templateConfig.capacity,
     roles,
     signups: [], // Array of {userId, roles: string[], timestamp}
@@ -97,7 +99,8 @@ export function updateEvent(id, updates) {
   return event;
 }
 
-// Save the current in-memory events to disk
+// Save the current in-memory events to disk. Returns the write promise so
+// callers (e.g. graceful shutdown) can await durability if they need to.
 export function save() {
-  saveEvents(events);
+  return saveEvents(events);
 }
