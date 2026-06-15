@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits, REST, Routes, MessageFlags } from 'discord.js';
 import { commands } from './commands/index.js';
-import { handleRoleButton, handlePreviewAccept, handlePreviewDelete } from './handlers/buttonHandler.js';
+import { handleRoleButton, handlePreviewAccept, handlePreviewDelete, handleEditOpen, handleEditSubmit, handleDeleteOpen, handleDeleteConfirm, handleDeleteCancel } from './handlers/buttonHandler.js';
 import { initializeEventManager, getAllEvents } from './managers/eventManager.js';
 import { scheduleEventReminder, scheduleEventCleanup, shouldCleanupEvent } from './schedulers/eventScheduler.js';
 
@@ -87,6 +87,18 @@ client.on('interactionCreate', async (interaction) => {
         await handlePreviewAccept(interaction);
       } else if (interaction.customId.startsWith('preview_delete_')) {
         await handlePreviewDelete(interaction);
+      } else if (interaction.customId.startsWith('edit_open_')) {
+        await handleEditOpen(interaction);
+      } else if (interaction.customId.startsWith('delete_open_')) {
+        await handleDeleteOpen(interaction);
+      } else if (interaction.customId.startsWith('delete_confirm_')) {
+        await handleDeleteConfirm(interaction);
+      } else if (interaction.customId.startsWith('delete_cancel_')) {
+        await handleDeleteCancel(interaction);
+      }
+    } else if (interaction.isModalSubmit()) {
+      if (interaction.customId.startsWith('edit_submit_')) {
+        await handleEditSubmit(interaction);
       }
     }
   } catch (error) {
