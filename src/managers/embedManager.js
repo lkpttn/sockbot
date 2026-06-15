@@ -110,3 +110,32 @@ export function buildEventButtons(event) {
 
   return rows;
 }
+
+/**
+ * Build the management row for a posted event (Edit + Delete).
+ * Rendered as its own trailing row beneath the role buttons.
+ * @param {object} event - The event object
+ * @returns {ActionRowBuilder} - A single action row with management buttons
+ */
+export function buildManagementRow(event) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`edit_open_${event.id}`)
+      .setLabel('Edit')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`delete_open_${event.id}`)
+      .setLabel('Delete')
+      .setStyle(ButtonStyle.Danger)
+  );
+}
+
+/**
+ * Build the full component set for a posted event: role buttons plus the
+ * management row. Used wherever the event message is (re)rendered.
+ * @param {object} event - The event object
+ * @returns {ActionRowBuilder[]} - All action rows for the message
+ */
+export function buildEventComponents(event) {
+  return [...buildEventButtons(event), buildManagementRow(event)];
+}

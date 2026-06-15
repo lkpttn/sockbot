@@ -12,6 +12,8 @@ Events are managed via an embed with buttons for each role. When a user selects 
 
 When an event has reached capacity, additional users are added to a waitlist. If an attending user drops off, the first user on the waitlist will promoted into the event.
 
+Posted events have an ✏️ Edit button. The event creator (or any server manager) can update the title, description, start time, and duration. The event message updates in place and a notice listing what changed is posted in the event thread. Changing the start time reschedules the reminder and cleanup and renames the thread to match.
+
 A thread is created for each event for additional discussion. Accepted users are automatically added to the thread, and removed from the thread if they remove their signup. A reminder is sent to the thread tagging all attending users 15 minutes before an event starts.
 
 Events are cleaned up 2.5 hours after their start date, deleting the message and accompanying thread. Events are stored in an `events.json` file and dynamically saved and loaded by the bot when users act or the bot is reloaded.
